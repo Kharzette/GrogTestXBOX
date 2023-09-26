@@ -1,5 +1,7 @@
 #include	<xtl.h>
 #include	<math.h>
+#include	<stdio.h>
+#include	<assert.h>
 #include	<D3DX8Math.h>
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
@@ -57,6 +59,8 @@ int main(void)
 	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
+	DWORD			vsHandle, vertDecl[3];
+	DWORD			*pCode;		//compiled shader code
 
 	D3DXMatrixIdentity(&world);
 
@@ -75,7 +79,35 @@ int main(void)
 	D3DXMatrixIdentity(&world);
 
 	D3DXMatrixTranslation(&bump0, 2.0f, -2.0f, 0.0f);	
-	D3DXMatrixTranslation(&bump1, -2.0f, -2.0f, 0.0f);	
+	D3DXMatrixTranslation(&bump1, -2.0f, -2.0f, 0.0f);
+
+	//vertex declaration, sorta like input layouts on 11
+	vertDecl[0]	=D3DVSD_REG(0, D3DVSDT_FLOAT3);
+	vertDecl[1]	=D3DVSD_REG(1, D3DVSDT_FLOAT3);
+	vertDecl[2]	=D3DVSD_END();
+
+	//load shader
+	{
+		size_t	amount;
+		long	fileLen;
+		FILE	*f	=fopen("D:\\Media\\ShaderLib\\Static.xvu", "rb");
+
+		//see how big the file is (lazy)
+		fseek(f, 0, SEEK_END);
+		fileLen	=ftell(f);
+
+		pCode	=malloc(fileLen);
+
+		fseek(f, 0, SEEK_SET);
+
+		amount	=fread(pCode, 1, fileLen, f);
+
+		assert(amount == fileLen);
+
+		fclose(f);
+	}
+
+	vsHandle	=GD_CreateVertexShader(pGD, vertDecl, pCode);	
 
 
 	while(bRunning)
