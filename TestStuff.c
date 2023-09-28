@@ -11,7 +11,7 @@
 
 #define	RESX			640
 #define	RESY			480
-#define	ROT_RATE		10.0f
+#define	ROT_RATE		1.0f
 #define	UVSCALE_RATE	1.0f
 #define	FARCLIP			100.0f
 #define	NEARCLIP		0.1f
@@ -60,8 +60,11 @@ int main(void)
 	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
-	DWORD			vsHandle, vertDecl[5];
-	DWORD			*pCode;		//compiled shader code
+	DWORD			vsHandle, psHandle, vertDecl[5];
+	DWORD			*pCode;		//compiled vshader code
+
+	//compiled pshader code
+	D3DPIXELSHADERDEF_FILE	psdf;
 
 	//shader shtuff
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -100,7 +103,7 @@ int main(void)
 	vertDecl[3]	=D3DVSD_REG(2, D3DVSDT_FLOAT2);
 	vertDecl[4]	=D3DVSD_END();
 
-	//load shader
+	//load vshader
 	{
 		size_t	amount;
 		long	fileLen;
@@ -121,8 +124,32 @@ int main(void)
 		fclose(f);
 	}
 
-	vsHandle	=GD_CreateVertexShader(pGD, vertDecl, pCode);	
+	vsHandle	=GD_CreateVertexShader(pGD, vertDecl, pCode);
 
+	free(pCode);
+
+	//load pshader
+	{
+		size_t	amount;
+		long	fileLen;
+		FILE	*f	=fopen("D:\\Media\\ShaderLib\\Static.xpu", "rb");
+
+		//see how big the file is (lazy)
+		fseek(f, 0, SEEK_END);
+		fileLen	=ftell(f);
+
+		pCode	=malloc(fileLen);
+
+		fseek(f, 0, SEEK_SET);
+
+		amount	=fread(&psdf, 1, sizeof(D3DPIXELSHADERDEF_FILE), f);
+
+		assert(amount == fileLen);
+
+		fclose(f);
+	}
+
+	psHandle	=GD_CreatePixelShader(pGD, &psdf.Psd);
 
 	while(bRunning)
 	{
@@ -139,6 +166,9 @@ int main(void)
 			UpdateTimer_UpdateDone(pUT);
 		}
 
+		GD_SetVertexShader(pGD, vsHandle);
+		GD_SetPixelShader(pGD, psHandle);
+
 		//render update
 		dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
@@ -150,13 +180,13 @@ int main(void)
 
 		//set vbuffer stuff up
 
-		GD_SetShaderConstant(pGD, 12, &eyePos, 1);		//eye position
-		GD_SetShaderConstant(pGD, 13, &light0, 1);		//trilight0
-		GD_SetShaderConstant(pGD, 14, &light1, 1);		//trilight1
-		GD_SetShaderConstant(pGD, 15, &light2, 1);		//trilight2
-		GD_SetShaderConstant(pGD, 16, &lightDir, 1);	//light dir + spec pow
-		GD_SetShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
-		GD_SetShaderConstant(pGD, 18, &specColor, 1);	//spec color
+		GD_SetVShaderConstant(pGD, 12, &eyePos, 1);			//eye position
+		GD_SetVShaderConstant(pGD, 13, &light0, 1);			//trilight0
+		GD_SetVShaderConstant(pGD, 14, &light1, 1);			//trilight1
+		GD_SetVShaderConstant(pGD, 15, &light2, 1);			//trilight2
+		GD_SetVShaderConstant(pGD, 16, &lightDir, 1);		//light dir + spec pow
+		GD_SetVShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
+		GD_SetVShaderConstant(pGD, 18, &specColor, 1);		//spec color
 
 		SpinMatYawPitch(dt, &world);
 
@@ -168,15 +198,10 @@ int main(void)
 			D3DXMatrixTranspose(&vtrans, &view);
 			D3DXMatrixTranspose(&ptrans, &proj);
 
-			GD_SetShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
-			GD_SetShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
-			GD_SetShaderConstant(pGD, 8, &wtrans, 4);	//world matrix
+			GD_SetVShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
+			GD_SetVShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
+			GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//world matrix
 		}
-
-//		GD_SetShaderConstant(pGD, 0, &view, 4);		//view matrix
-//		GD_SetShaderConstant(pGD, 4, &proj, 4);		//proj matrix
-//		GD_SetShaderConstant(pGD, 8, &world, 4);	//world matrix
-
 
 		//camera update
 
@@ -186,8 +211,6 @@ int main(void)
 		GD_Clear(pGD, clear);
 
 		GD_BeginScene(pGD);
-
-		GD_SetVertexShader(pGD, vsHandle);
 
 		GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 
