@@ -13,7 +13,8 @@
 #define	RESY			480
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
-#define	FARCLIP			1000.0f
+#define	FARCLIP			100.0f
+#define	NEARCLIP		0.1f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -59,8 +60,18 @@ int main(void)
 	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
-	DWORD			vsHandle, vertDecl[3];
+	DWORD			vsHandle, vertDecl[5];
 	DWORD			*pCode;		//compiled shader code
+
+	//shader shtuff
+	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
+	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR3	light1		={	0.2f, 0.3f, 0.3f	};
+	D3DXVECTOR3	light2		={	0.1f, 0.2f, 0.2f	};
+	D3DXVECTOR3	lightDir	={	0.3f, -0.7f, -0.5f	};
 
 	D3DXMatrixIdentity(&world);
 
@@ -71,7 +82,8 @@ int main(void)
 
 	pCube	=PF_CreateCube(0.5f, pGD);
 
-	D3DXMatrixPerspectiveFovRH(&proj, D3DX_PI / 4.0f, aspect, 1.0f, FARCLIP);
+	D3DXMatrixPerspectiveFovRH(&proj, D3DX_PI / 4.0f, aspect, NEARCLIP, FARCLIP);
+//	D3DXMatrixOrthoOffCenterRH(&proj, 0, RESX, 0, RESY, 1.0f, FARCLIP);
 
 	D3DXMatrixLookAtRH(&view, &eyePos, &targPos, &upVec);
 
@@ -82,9 +94,11 @@ int main(void)
 	D3DXMatrixTranslation(&bump1, -2.0f, -2.0f, 0.0f);
 
 	//vertex declaration, sorta like input layouts on 11
-	vertDecl[0]	=D3DVSD_REG(0, D3DVSDT_FLOAT3);
-	vertDecl[1]	=D3DVSD_REG(1, D3DVSDT_FLOAT3);
-	vertDecl[2]	=D3DVSD_END();
+	vertDecl[0]	=D3DVSD_STREAM(0);
+	vertDecl[1]	=D3DVSD_REG(0, D3DVSDT_FLOAT3);
+	vertDecl[2]	=D3DVSD_REG(1, D3DVSDT_FLOAT3);
+	vertDecl[3]	=D3DVSD_REG(2, D3DVSDT_FLOAT2);
+	vertDecl[4]	=D3DVSD_END();
 
 	//load shader
 	{
@@ -136,13 +150,35 @@ int main(void)
 
 		//set vbuffer stuff up
 
+		GD_SetShaderConstant(pGD, 12, &eyePos, 1);		//eye position
+		GD_SetShaderConstant(pGD, 13, &light0, 1);		//trilight0
+		GD_SetShaderConstant(pGD, 14, &light1, 1);		//trilight1
+		GD_SetShaderConstant(pGD, 15, &light2, 1);		//trilight2
+		GD_SetShaderConstant(pGD, 16, &lightDir, 1);	//light dir + spec pow
+		GD_SetShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
+		GD_SetShaderConstant(pGD, 18, &specColor, 1);	//spec color
+
 		SpinMatYawPitch(dt, &world);
 
 		//set shader variables
+		{
+			D3DXMATRIX	wtrans, vtrans, ptrans;
+
+			D3DXMatrixTranspose(&wtrans, &world);
+			D3DXMatrixTranspose(&vtrans, &view);
+			D3DXMatrixTranspose(&ptrans, &proj);
+
+			GD_SetShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
+			GD_SetShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
+			GD_SetShaderConstant(pGD, 8, &wtrans, 4);	//world matrix
+		}
+
+//		GD_SetShaderConstant(pGD, 0, &view, 4);		//view matrix
+//		GD_SetShaderConstant(pGD, 4, &proj, 4);		//proj matrix
+//		GD_SetShaderConstant(pGD, 8, &world, 4);	//world matrix
+
 
 		//camera update
-
-		//set CB view
 
 		//bones
 
@@ -151,7 +187,16 @@ int main(void)
 
 		GD_BeginScene(pGD);
 
+		GD_SetVertexShader(pGD, vsHandle);
+
+		GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
+
+		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
+		GD_SetIndices(pGD, pCube->mpIB, 0);		
+
 		//draw stuff
+		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
+							0, pCube->mIndexCount / 3);
 
 		GD_EndScene(pGD);
 

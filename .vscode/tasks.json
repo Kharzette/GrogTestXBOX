@@ -8,6 +8,7 @@
 			"type": "shell",
 			"command": "C:/Program Files (x86)/Microsoft Xbox SDK/xbox/bin/xsasm.exe",
 			"args": [
+				"/Od",
 				"${file}"
 			],
 			"problemMatcher": [
