@@ -18,6 +18,7 @@
 #define	UVSCALE_RATE	1.0f
 #define	FARCLIP			100.0f
 #define	NEARCLIP		0.1f
+#define	ANALOG_SCALE	0.000005f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -66,6 +67,7 @@ int main(void)
 	DWORD			vsHandle, psHandle, vertDecl[5];
 	Mesh			*pShuttle;
 	XBC				*pXBC;
+	D3DXVECTOR2		shuttleAttitude	={	0.0f, 0.0f	};
 
 	LPDIRECT3DTEXTURE8	pTestTex	=NULL;
 
@@ -125,10 +127,21 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
+			SHORT	leftX	=0;
+			SHORT	leftY	=0;
+
 			//do input here
 			//move camera etc
 			XBC_UpdateInput(pXBC);
-			XBC_PrintInput(pXBC);
+			//XBC_PrintInput(pXBC);
+
+			XBC_GetAnalogLeft(pXBC, &leftX, &leftY);
+
+			shuttleAttitude.x	+=(leftX * ANALOG_SCALE);
+			shuttleAttitude.y	+=(leftY * ANALOG_SCALE);
+
+			shuttleAttitude.x	=WrapAngleDegrees(shuttleAttitude.x);
+			shuttleAttitude.y	=WrapAngleDegrees(shuttleAttitude.y);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -156,6 +169,10 @@ int main(void)
 		GD_SetVShaderConstant(pGD, 18, &specColor, 1);		//spec color
 
 		SpinMatYawPitch(dt, &world);
+
+		//steer shuttle
+		D3DXMatrixRotationYawPitchRoll(&shuttleMat,
+			shuttleAttitude.x, shuttleAttitude.y, 0.0f);
 
 		//set shader variables
 		{

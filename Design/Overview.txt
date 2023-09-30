@@ -1,0 +1,55 @@
+Mining
+	Need a list of Stuff
+		Metals
+		Volatiles
+		Rarity?
+	Mining is Towing
+	Do need diggers near refiners
+	Refining
+		Needs alot of power
+Shipyards
+Defense
+	Pirates
+	Rivals
+Installations
+Research
+	Propulsion
+	Materials
+	Magnetics/Ions
+		Needed for big speeds
+	Defense
+	Medical
+	Products
+	Computing
+		Classical
+		Quantum
+	Comms
+		Radio
+		Laser
+		Entangled
+	Power
+		Fission
+		Fusion
+		Solar
+		Zeropoint
+Transport
+Markets
+Colonies
+Employees
+	Welders
+	Researchers
+	Engineers
+		Maintain engines etc
+	Coders
+	Factory Techs
+	Bizzys
+	Medtechs
+	Farmers
+	ShipCrew
+		Captains
+		Gunners
+		Marines
+			Company Commander
+		Spacers
+		Navigators
+		Shuttle pilots

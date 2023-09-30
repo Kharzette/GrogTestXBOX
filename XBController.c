@@ -11,6 +11,9 @@ typedef struct XBCtag
 	XINPUT_POLLING_PARAMETERS	mXipp;
 }	XBC;
 
+//Deadzone for the gamepad inputs (from gamepad sample)
+const SHORT XINPUT_DEADZONE	=(SHORT)(7864);
+
 
 XBC	*XBC_Init(void)
 {
@@ -49,6 +52,44 @@ XBC	*XBC_Init(void)
 	}
 
 	return	pRet;
+}
+
+void	XBC_GetAnalogLeft(const XBC *pXBC, SHORT *pX, SHORT *pY)
+{
+	int	i;
+
+	for(i=0;i < 4;i++)
+	{
+		SHORT	x, y;
+
+		if(!pXBC->mHandles[i])
+		{
+			continue;
+		}
+
+		x	=pXBC->mStates[i].Gamepad.sThumbLX;
+		y	=pXBC->mStates[i].Gamepad.sThumbLY;
+
+		if(x < -XINPUT_DEADZONE)
+		{
+			*pX	=x + XINPUT_DEADZONE;
+		}
+		else if(x > XINPUT_DEADZONE)
+		{
+			*pX	=x - XINPUT_DEADZONE;
+		}
+
+		if(y < -XINPUT_DEADZONE)
+		{
+			*pY	=y + XINPUT_DEADZONE;
+		}
+		else if(y > XINPUT_DEADZONE)
+		{
+			*pY	=y - XINPUT_DEADZONE;
+		}
+
+		break;
+	}
 }
 
 //from the xbox input samples
