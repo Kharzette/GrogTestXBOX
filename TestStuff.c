@@ -3,11 +3,13 @@
 #include	<stdio.h>
 #include	<assert.h>
 #include	<D3DX8Math.h>
+#include	"XBController.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
+#include	"GrogLibsXBOX/MeshLib/Mesh.h"
 
 
 #define	RESX			640
@@ -55,13 +57,15 @@ int main(void)
 	BOOL			bRunning	=TRUE;
 	UpdateTimer		*pUT		=UpdateTimer_Create(TRUE, FALSE);
 	float			aspect	=(float)RESX / (float)RESY;
-	D3DXMATRIX		ident, world, view, proj, yaw, pitch, temp, meshMat;
+	D3DXMATRIX		ident, world, view, proj, shuttleMat;
 	D3DXMATRIX		bump0, bump1;	//translate world a bit
-	D3DXVECTOR3		eyePos	={ 0.0f, 0.6f, 4.5f };
+	D3DXVECTOR3		eyePos	={ 0.0f, 0.6f, 12.5f };
 	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
 	DWORD			vsHandle, psHandle, vertDecl[5];
+	Mesh			*pShuttle;
+	XBC				*pXBC;
 
 	LPDIRECT3DTEXTURE8	pTestTex	=NULL;
 
@@ -91,6 +95,7 @@ int main(void)
 
 	D3DXMatrixIdentity(&ident);
 	D3DXMatrixIdentity(&world);
+	D3DXMatrixIdentity(&shuttleMat);
 
 	D3DXMatrixTranslation(&bump0, 2.0f, -2.0f, 0.0f);	
 	D3DXMatrixTranslation(&bump1, -2.0f, -2.0f, 0.0f);
@@ -102,12 +107,14 @@ int main(void)
 	vertDecl[3]	=D3DVSD_REG(2, D3DVSDT_FLOAT2);
 	vertDecl[4]	=D3DVSD_END();
 
-
 	vsHandle	=LoadCompiledVShader(pGD, vertDecl, "D:\\Media\\ShaderLib\\Static.xvu");
 	psHandle	=LoadCompiledPShader(pGD, "D:\\Media\\ShaderLib\\Static.xpu");
 
 	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Test.png");
 
+	pShuttle	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
+
+	pXBC	=XBC_Init();
 
 	while(bRunning)
 	{
@@ -120,6 +127,8 @@ int main(void)
 		{
 			//do input here
 			//move camera etc
+			XBC_UpdateInput(pXBC);
+			XBC_PrintInput(pXBC);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -172,12 +181,23 @@ int main(void)
 
 		GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 
+		//draw gimpy cube
 		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
 		GD_SetIndices(pGD, pCube->mpIB, 0);		
-
-		//draw stuff
 		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
 							0, pCube->mIndexCount / 3);
+
+		//set shuttle world mat
+		{
+			D3DXMATRIX	wtrans;
+
+			D3DXMatrixTranspose(&wtrans, &shuttleMat);
+
+			GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//shuttle matrix
+		}
+
+		//draw shuttle
+		Mesh_Draw(pShuttle, pGD);
 
 		GD_EndScene(pGD);
 
