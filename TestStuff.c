@@ -7,6 +7,7 @@
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
+#include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
 
 
 #define	RESX			640
@@ -61,10 +62,8 @@ int main(void)
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
 	DWORD			vsHandle, psHandle, vertDecl[5];
-	DWORD			*pCode;		//compiled vshader code
 
-	//compiled pshader code
-	D3DPIXELSHADERDEF_FILE	psdf;
+	LPDIRECT3DTEXTURE8	pTestTex	=NULL;
 
 	//shader shtuff
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -103,53 +102,12 @@ int main(void)
 	vertDecl[3]	=D3DVSD_REG(2, D3DVSDT_FLOAT2);
 	vertDecl[4]	=D3DVSD_END();
 
-	//load vshader
-	{
-		size_t	amount;
-		long	fileLen;
-		FILE	*f	=fopen("D:\\Media\\ShaderLib\\Static.xvu", "rb");
 
-		//see how big the file is (lazy)
-		fseek(f, 0, SEEK_END);
-		fileLen	=ftell(f);
+	vsHandle	=LoadCompiledVShader(pGD, vertDecl, "D:\\Media\\ShaderLib\\Static.xvu");
+	psHandle	=LoadCompiledPShader(pGD, "D:\\Media\\ShaderLib\\Static.xpu");
 
-		pCode	=malloc(fileLen);
+	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Test.png");
 
-		fseek(f, 0, SEEK_SET);
-
-		amount	=fread(pCode, 1, fileLen, f);
-
-		assert(amount == fileLen);
-
-		fclose(f);
-	}
-
-	vsHandle	=GD_CreateVertexShader(pGD, vertDecl, pCode);
-
-	free(pCode);
-
-	//load pshader
-	{
-		size_t	amount;
-		long	fileLen;
-		FILE	*f	=fopen("D:\\Media\\ShaderLib\\Static.xpu", "rb");
-
-		//see how big the file is (lazy)
-		fseek(f, 0, SEEK_END);
-		fileLen	=ftell(f);
-
-		pCode	=malloc(fileLen);
-
-		fseek(f, 0, SEEK_SET);
-
-		amount	=fread(&psdf, 1, sizeof(D3DPIXELSHADERDEF_FILE), f);
-
-		assert(amount == fileLen);
-
-		fclose(f);
-	}
-
-	psHandle	=GD_CreatePixelShader(pGD, &psdf.Psd);
 
 	while(bRunning)
 	{
