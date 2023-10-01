@@ -148,6 +148,7 @@ Interface
 		Cargo capacity stuff
 		Passenger indicator?
 		Nav / Waypoint stuff?
+		Heat & deltas
 	On-Foot
 		Weapon / Ammo stuff
 		Air if in vacuum / suited
@@ -160,6 +161,8 @@ Interface
 			Buy and sell raw materials or finished goods
 		Contracts
 			Hauling, Hunting, Manufacturing, Guarding, Construction
+		Real Estate
+			Buy/lease office/residential/industrial etc
 	Personal
 		Equipment / inventory
 			Worn items, Weapons/Ammo, Air etc
@@ -169,6 +172,7 @@ Interface
 		Damage details
 		Cargo
 		Passenger stuff
+		Heat
 Traffic
 	Ships are basically nukes x 100 so installations are jumpy
 	Velocity is danger.  A small ship can kill a planet.

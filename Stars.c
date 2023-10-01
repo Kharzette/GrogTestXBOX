@@ -18,7 +18,7 @@ typedef struct StarsTag
 Stars	*Stars_Generate(GraphicsDevice *pGD)
 {
 	int			i;
-	DWORD		vertDecl[5];
+	DWORD		vertDecl[3];
 	Stars		*pRet	=malloc(sizeof(Stars));
 	D3DXVECTOR3	*pStars	=malloc(sizeof(D3DXVECTOR3) * NUM_STARS);
 
@@ -39,6 +39,8 @@ Stars	*Stars_Generate(GraphicsDevice *pGD)
 	}
 
 	GD_CreateVertexBuffer(pGD, pStars, sizeof(D3DXVECTOR3) * NUM_STARS, &pRet->mpVerts);
+
+	free(pStars);
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);

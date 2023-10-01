@@ -20,6 +20,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				OptimizeForProcessor="2"
+				AdditionalIncludeDirectories="GrogLibsXBOX\uthash\src"
 				PreprocessorDefinitions="_DEBUG;_XBOX"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
@@ -272,6 +273,12 @@
 		</File>
 		<File
 			RelativePath=".\TestStuff.c">
+		</File>
+		<File
+			RelativePath=".\UI.c">
+		</File>
+		<File
+			RelativePath=".\UI.h">
 		</File>
 		<File
 			RelativePath=".\XBController.c">

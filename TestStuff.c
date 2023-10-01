@@ -5,11 +5,14 @@
 #include	<D3DX8Math.h>
 #include	"XBController.h"
 #include	"Stars.h"
+#include	"UI.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
+#include	"GrogLibsXBOX/UtilityLib/StringStuff.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
+#include	"GrogLibsXBOX/MaterialLib/Font.h"
 #include	"GrogLibsXBOX/MeshLib/Mesh.h"
 
 
@@ -70,8 +73,10 @@ int main(void)
 	XBC				*pXBC;
 	D3DXVECTOR2		shuttleAttitude	={	0.0f, 0.0f	};
 	Stars			*pStars;
+	UI				*pUI;
+	Font			*pUIFont;
 
-	LPDIRECT3DTEXTURE8	pTestTex	=NULL;
+	LPDIRECT3DTEXTURE8	pUITex, pTestTex	=NULL;
 
 	//shader shtuff
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -82,6 +87,14 @@ int main(void)
 	D3DXVECTOR3	light1		={	0.2f, 0.3f, 0.3f	};
 	D3DXVECTOR3	light2		={	0.1f, 0.2f, 0.2f	};
 	D3DXVECTOR3	lightDir	={	0.3f, -0.7f, -0.5f	};
+
+	UT_string	*pTestMsg, *pTestText;
+	
+	utstring_new(pTestMsg);
+	utstring_new(pTestText);
+
+	utstring_printf(pTestMsg, "Test");
+	utstring_printf(pTestText, "Goblinses, 1234");
 
 	D3DXMatrixIdentity(&world);
 
@@ -121,6 +134,19 @@ int main(void)
 	pXBC	=XBC_Init();
 
 	pStars	=Stars_Generate(pGD);
+
+	pUIFont	=Font_CreateCCP("D:\\Media\\Fonts\\Bahnschrift40.dat");
+
+	GD_CreateTextureFromFile(pGD, &pUITex, "D:\\Media\\Fonts\\Bahnschrift40.png");
+
+	pUI	=UI_Init(pGD);
+
+	UI_AddString(pUI, pGD, pUIFont, pUITex, 255, pTestMsg, pTestText);
+
+	UI_TextSetColour(pUI, pTestMsg, specColor);
+	UI_TextSetText(pUI, pTestMsg, pTestText);
+
+	UI_ComputeVB(pUI, pGD, pTestMsg);
 
 	while(bRunning)
 	{
@@ -182,7 +208,7 @@ int main(void)
 		}
 
 		//draw stars
-		Stars_Draw(pStars, pGD);
+//		Stars_Draw(pStars, pGD);
 
 		//set vbuffer stuff up
 		GD_SetVertexShader(pGD, vsHandle);
@@ -219,8 +245,8 @@ int main(void)
 		//draw gimpy cube
 		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
 		GD_SetIndices(pGD, pCube->mpIB, 0);		
-		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
-							0, pCube->mIndexCount / 3);
+//		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
+//							0, pCube->mIndexCount / 3);
 
 		//set shuttle world mat
 		{
@@ -232,7 +258,10 @@ int main(void)
 		}
 
 		//draw shuttle
-		Mesh_Draw(pShuttle, pGD);
+//		Mesh_Draw(pShuttle, pGD);
+
+		//draw ui stuff
+		UI_Draw(pUI, pGD);
 
 		GD_EndScene(pGD);
 
