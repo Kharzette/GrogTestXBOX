@@ -1,40 +1,89 @@
 Mining
 	Need a list of Stuff
-		Metals
+		Minerals
 		Volatiles
 		Rarity?
-	Mining is Towing
-	Do need diggers near refiners
+	Big part of mining is Towing
+		Big nets that hold material together for towing
 	Refining
 		Needs alot of power
+	Tailings
+		Use for concrete or asphalt type stuff
 Shipyards
 Defense
 	Pirates
 	Rivals
 Installations
+	Big pop orbitals
+	Defense
+	Corpo foundries / factories
+	Military	
 Research
 	Propulsion
+		Basic propulsion is electric
+			resonant cavity thrusters
+			ring stack
+			casimir
+		Gossamer drive
+			This one makes ghostly wings
+		Dark pulse drive
+			Uses quantized accel / dark energy
+			Harder to control
+			Need secondary propulsion for fine control
+			G forces too high for baseline humans
+		RCS
+			For turning etc
 	Materials
+		Armors
+		Heat radiators
+		Strength for construction
+		Exotic properties (superconductors?)
 	Magnetics/Ions
-		Needed for big speeds
+		Needed for propulsion, lithography
 	Defense
+		Lead slingers
+		Beam weapons
+		Marine Armor
+		Ship Armor
 	Medical
+		Augments
+			G resistance
+			Uplinks
+				Good for office workers
+				Good for marines
+			Blood nanomachines
+				Just a raw heal time reducer?
+		Life extension
+		Rejuves
+		DNA repair / rewrite
+		Genetic hacking
+		Synthetic Organs
+		Pharma
+			Cancer treatment
+			Radiation treatment / resistance
 	Products
 	Computing
 		Classical
+			Lithography
+			Optics
 		Quantum
 	Comms
 		Radio
 		Laser
-		Entangled
+		Entangled?
 	Power
 		Fission
 		Fusion
 		Solar
-		Zeropoint
+		Zeropoint?
 Transport
+	Higher speeds will ablate the front of ships
+	Good to pack on ice in the front
 Markets
+	Food, fuel, stonks, air, water, products, personal gear
+	Very localized due to lightlag
 Colonies
+	Big plan multiyear trips to other stars (future stuff)
 Employees
 	Welders
 	Researchers
@@ -42,7 +91,7 @@ Employees
 		Maintain engines etc
 	Coders
 	Factory Techs
-	Bizzys
+	Bizzys / Marketing slime
 	Medtechs
 	Farmers
 	ShipCrew
@@ -53,3 +102,98 @@ Employees
 		Spacers
 		Navigators
 		Shuttle pilots
+Starting
+	Start with a beatup old shuttle
+	Maybe do hauling missions to build up cash
+	Eventually buy an installation?
+		haul it out to the kuiper belt and set up somewhere
+		Can turn purchased material into products or
+			mine and make ingots
+	Or do military contracts
+	Or do stonks
+	Or do trading between markets
+Midgame
+	Specialize in products / services
+	Start researching and staffing up
+	Need to start thinking about defense
+Endgame
+	Defending against pirates and rivals alot
+	bigger ships for bigger hauls
+	vertical integration so you can make everything in the supply chain
+Interface
+	Look and Feel
+		Mostly Dark Background
+		Maybe lots of tabbed screens
+			Triggers to swap tabs
+		Non text elements (2d polygons?)
+			Colored rectangle areas
+			Rounded rects
+				Empty or filled to indicate selection?
+			Fat bracketed areas
+			Thin lines for diagrams
+			Meters
+			Xbox button graphics
+			Thin grids
+			Waveform displays for comms?	
+	Main Menu
+		Start New Game
+		Continue
+		Settings
+		Quit
+	Piloting
+		Regional indicator
+		Velocity Indicator
+		Acceleration in G
+		Remaining fuel / air
+		Cargo capacity stuff
+		Passenger indicator?
+		Nav / Waypoint stuff?
+	On-Foot
+		Weapon / Ammo stuff
+		Air if in vacuum / suited
+		Money
+		Health
+	Friendly Installations might have some of the following
+		Hiring
+			Lists of people ready to work for you
+		Markets
+			Buy and sell raw materials or finished goods
+		Contracts
+			Hauling, Hunting, Manufacturing, Guarding, Construction
+	Personal
+		Equipment / inventory
+			Worn items, Weapons/Ammo, Air etc
+	Ship
+		Specs
+		Swap out parts
+		Damage details
+		Cargo
+		Passenger stuff
+Traffic
+	Ships are basically nukes x 100 so installations are jumpy
+	Velocity is danger.  A small ship can kill a planet.
+	Traffic control will want you to slow down on approach or will fire
+Installation Modules
+	These are snap together like legos
+	Some will need to be spun for gravity
+	Module Types
+		Spun
+			Habitation
+			Research
+			Medical
+			Farming
+		ZeroG
+			Power
+			Defense
+			Refining
+			Storage
+				Tanks for volatiles (o2 water etc)
+				Fuel
+			Factory
+			Comms
+			Computing
+			Refineries
+				Metals
+				Silicon
+				Volatiles
+				Carbons

@@ -4,6 +4,7 @@
 #include	<assert.h>
 #include	<D3DX8Math.h>
 #include	"XBController.h"
+#include	"Stars.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
@@ -16,7 +17,7 @@
 #define	RESY			480
 #define	ROT_RATE		1.0f
 #define	UVSCALE_RATE	1.0f
-#define	FARCLIP			100.0f
+#define	FARCLIP			1000.0f
 #define	NEARCLIP		0.1f
 #define	ANALOG_SCALE	0.000005f
 
@@ -68,6 +69,7 @@ int main(void)
 	Mesh			*pShuttle;
 	XBC				*pXBC;
 	D3DXVECTOR2		shuttleAttitude	={	0.0f, 0.0f	};
+	Stars			*pStars;
 
 	LPDIRECT3DTEXTURE8	pTestTex	=NULL;
 
@@ -118,10 +120,12 @@ int main(void)
 
 	pXBC	=XBC_Init();
 
+	pStars	=Stars_Generate(pGD);
+
 	while(bRunning)
 	{
-		//good old xna blue
-		D3DCOLOR	clear			=D3DCOLOR_XRGB(100, 149, 237);
+		//space color
+		D3DCOLOR	clear			=D3DCOLOR_XRGB(1, 1, 3);
 		float		dt, animTime	=0.0f;
 
 		UpdateTimer_Stamp(pUT);
@@ -146,9 +150,6 @@ int main(void)
 			UpdateTimer_UpdateDone(pUT);
 		}
 
-		GD_SetVertexShader(pGD, vsHandle);
-		GD_SetPixelShader(pGD, psHandle);
-
 		//render update
 		dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
@@ -158,7 +159,34 @@ int main(void)
 		
 		//update character bones
 
+		SpinMatYawPitch(dt, &world);
+
+		//steer shuttle
+		D3DXMatrixRotationYawPitchRoll(&shuttleMat,
+			shuttleAttitude.x, shuttleAttitude.y, 0.0f);
+
+		//clear
+		GD_Clear(pGD, clear);
+
+		GD_BeginScene(pGD);
+
+		//set star shader variables
+		{
+			D3DXMATRIX	vtrans, ptrans;
+
+			D3DXMatrixTranspose(&vtrans, &view);
+			D3DXMatrixTranspose(&ptrans, &proj);
+
+			GD_SetVShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
+			GD_SetVShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
+		}
+
+		//draw stars
+		Stars_Draw(pStars, pGD);
+
 		//set vbuffer stuff up
+		GD_SetVertexShader(pGD, vsHandle);
+		GD_SetPixelShader(pGD, psHandle);
 
 		GD_SetVShaderConstant(pGD, 12, &eyePos, 1);			//eye position
 		GD_SetVShaderConstant(pGD, 13, &light0, 1);			//trilight0
@@ -167,12 +195,6 @@ int main(void)
 		GD_SetVShaderConstant(pGD, 16, &lightDir, 1);		//light dir + spec pow
 		GD_SetVShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
 		GD_SetVShaderConstant(pGD, 18, &specColor, 1);		//spec color
-
-		SpinMatYawPitch(dt, &world);
-
-		//steer shuttle
-		D3DXMatrixRotationYawPitchRoll(&shuttleMat,
-			shuttleAttitude.x, shuttleAttitude.y, 0.0f);
 
 		//set shader variables
 		{
@@ -191,10 +213,6 @@ int main(void)
 
 		//bones
 
-		//clear
-		GD_Clear(pGD, clear);
-
-		GD_BeginScene(pGD);
 
 		GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 

@@ -265,6 +265,12 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\Stars.c">
+		</File>
+		<File
+			RelativePath=".\Stars.h">
+		</File>
+		<File
 			RelativePath=".\TestStuff.c">
 		</File>
 		<File

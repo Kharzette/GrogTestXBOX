@@ -1,4 +1,4 @@
-//#include	<xtl.h>
+#pragma once
 
 typedef struct XBCtag	XBC;
 
