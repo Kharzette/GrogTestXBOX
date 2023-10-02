@@ -6,6 +6,8 @@
 #include	"XBController.h"
 #include	"Stars.h"
 #include	"UI.h"
+#include	"PilotUI.h"
+#include	"Ship.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
@@ -22,7 +24,7 @@
 #define	UVSCALE_RATE	1.0f
 #define	FARCLIP			1000.0f
 #define	NEARCLIP		0.1f
-#define	ANALOG_SCALE	0.000005f
+#define	ANALOG_SCALE	0.0001f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -62,19 +64,21 @@ int main(void)
 	BOOL			bRunning	=TRUE;
 	UpdateTimer		*pUT		=UpdateTimer_Create(TRUE, FALSE);
 	float			aspect	=(float)RESX / (float)RESY;
-	D3DXMATRIX		ident, world, view, proj, shuttleMat;
-	D3DXMATRIX		bump0, bump1;	//translate world a bit
+	D3DXMATRIX		world, view, proj;
 	D3DXVECTOR3		eyePos	={ 0.0f, 0.6f, 12.5f };
 	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
 	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
 	PrimObject		*pCube;
 	DWORD			vsHandle, psHandle, vertDecl[5];
-	Mesh			*pShuttle;
+	Mesh			*pShuttleMesh;
 	XBC				*pXBC;
 	D3DXVECTOR2		shuttleAttitude	={	0.0f, 0.0f	};
 	Stars			*pStars;
 	UI				*pUI;
 	Font			*pUIFont;
+	PilotUI			*pPilotUI;
+	Ship			*pShuttle;
+	int				frameCount	=0;
 
 	LPDIRECT3DTEXTURE8	pUITex, pTestTex	=NULL;
 
@@ -88,14 +92,6 @@ int main(void)
 	D3DXVECTOR3	light2		={	0.1f, 0.2f, 0.2f	};
 	D3DXVECTOR3	lightDir	={	0.3f, -0.7f, -0.5f	};
 
-	UT_string	*pTestMsg, *pTestText;
-	
-	utstring_new(pTestMsg);
-	utstring_new(pTestText);
-
-	utstring_printf(pTestMsg, "Test");
-	utstring_printf(pTestText, "Goblinses, 1234");
-
 	D3DXMatrixIdentity(&world);
 
 //	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
@@ -106,16 +102,11 @@ int main(void)
 	pCube	=PF_CreateCube(0.5f, pGD);
 
 	D3DXMatrixPerspectiveFovRH(&proj, D3DX_PI / 4.0f, aspect, NEARCLIP, FARCLIP);
-//	D3DXMatrixOrthoOffCenterRH(&proj, 0, RESX, 0, RESY, 1.0f, FARCLIP);
 
 	D3DXMatrixLookAtRH(&view, &eyePos, &targPos, &upVec);
 
-	D3DXMatrixIdentity(&ident);
 	D3DXMatrixIdentity(&world);
-	D3DXMatrixIdentity(&shuttleMat);
 
-	D3DXMatrixTranslation(&bump0, 2.0f, -2.0f, 0.0f);	
-	D3DXMatrixTranslation(&bump1, -2.0f, -2.0f, 0.0f);
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);
@@ -128,9 +119,9 @@ int main(void)
 	psHandle	=LoadCompiledPShader(pGD, "D:\\Media\\ShaderLib\\Static.xpu");
 
 //	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\RainbowVomit.png");
-	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Rainbow.png");
+//	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Rainbow.png");
 
-	pShuttle	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
+	pShuttleMesh	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
 
 	pXBC	=XBC_Init();
 
@@ -142,60 +133,62 @@ int main(void)
 
 	pUI	=UI_Init(pGD);
 
-	UI_AddString(pUI, pGD, pUIFont, pUITex, 255, pTestMsg, pTestText);
-//	UI_AddString(pUI, pGD, pUIFont, pTestTex, 255, pTestMsg, pTestText);
+	pPilotUI	=PUI_Init(pUI, pGD, pUIFont, pUITex);
 
-	UI_TextSetColour(pUI, pTestMsg, specColor);
-	UI_TextSetText(pUI, pTestMsg, pTestText);
-	{
-		D3DXVECTOR2	scoot	={	20.0f, 20.0f	};
-		UI_TextSetPosition(pUI, pTestMsg, scoot);
-	}
+	pShuttle	=Ship_Init(pShuttleMesh);
 
-	UI_ComputeVB(pUI, pGD, pTestMsg);
 
 	while(bRunning)
 	{
 		//space color
-		D3DCOLOR	clear			=D3DCOLOR_XRGB(1, 1, 3);
-		float		dt, animTime	=0.0f;
+		D3DCOLOR	clear					=D3DCOLOR_XRGB(1, 1, 3);
+		float		dt, renderDT, animTime	=0.0f;
 
 		UpdateTimer_Stamp(pUT);
-		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
+		for(dt=UpdateTimer_GetUpdateDeltaSeconds(pUT);
+			dt > 0.0f;dt=UpdateTimer_GetUpdateDeltaSeconds(pUT))
 		{
-			SHORT	leftX	=0;
-			SHORT	leftY	=0;
+			SHORT	rightX		=0;
+			SHORT	rightY		=0;
+			SHORT	leftX		=0;
+			SHORT	leftY		=0;
+			BYTE	throttle	=0;
 
 			//do input here
 			//move camera etc
 			XBC_UpdateInput(pXBC);
 			//XBC_PrintInput(pXBC);
 
-			XBC_GetAnalogLeft(pXBC, &leftX, &leftY);
+			XBC_GetAnalogRight(pXBC, &rightX, &rightY);
+			XBC_GetRightTrigger(pXBC, &throttle);
 
-			shuttleAttitude.x	+=(leftX * ANALOG_SCALE);
-			shuttleAttitude.y	+=(leftY * ANALOG_SCALE);
+			Ship_Turn(pShuttle, dt, rightY * ANALOG_SCALE,
+				rightX * ANALOG_SCALE, 0.0f);
 
-			shuttleAttitude.x	=WrapAngleDegrees(shuttleAttitude.x);
-			shuttleAttitude.y	=WrapAngleDegrees(shuttleAttitude.y);
+			Ship_Accelerate(pShuttle, dt, throttle);
+
+			Ship_Update(pShuttle, dt);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
 
 		//render update
-		dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
+		renderDT	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
-		animTime	+=dt;
+		animTime	+=renderDT;
 
 		//animate characters
 		
 		//update character bones
 
-		SpinMatYawPitch(dt, &world);
+		SpinMatYawPitch(renderDT, &world);
 
-		//steer shuttle
-		D3DXMatrixRotationYawPitchRoll(&shuttleMat,
-			shuttleAttitude.x, shuttleAttitude.y, 0.0f);
+		frameCount++;
+		if(frameCount >=10)
+		{
+			frameCount	-=10;
+			Ship_UpdateUI(pShuttle, pPilotUI, pGD);
+		}
 
 		//clear
 		GD_Clear(pGD, clear);
@@ -214,7 +207,7 @@ int main(void)
 		}
 
 		//draw stars
-//		Stars_Draw(pStars, pGD);
+		Stars_Draw(pStars, pGD);
 
 		//set vbuffer stuff up
 		GD_SetVertexShader(pGD, vsHandle);
@@ -248,20 +241,10 @@ int main(void)
 		//draw gimpy cube
 		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
 		GD_SetIndices(pGD, pCube->mpIB, 0);		
-//		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
-//							0, pCube->mIndexCount / 3);
+		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
+							0, pCube->mIndexCount / 3);
 
-		//set shuttle world mat
-		{
-			D3DXMATRIX	wtrans;
-
-			D3DXMatrixTranspose(&wtrans, &shuttleMat);
-
-			GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//shuttle matrix
-		}
-
-		//draw shuttle
-//		Mesh_Draw(pShuttle, pGD);
+		Ship_Draw(pShuttle, pGD);
 
 		//draw ui stuff
 		UI_Draw(pUI, pGD);

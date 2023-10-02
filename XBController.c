@@ -92,6 +92,76 @@ void	XBC_GetAnalogLeft(const XBC *pXBC, SHORT *pX, SHORT *pY)
 	}
 }
 
+void	XBC_GetLeftTrigger(const XBC *pXBC, BYTE *val)
+{
+	int	i;
+
+	for(i=0;i < 4;i++)
+	{
+		if(!pXBC->mHandles[i])
+		{
+			continue;
+		}
+
+		*val	=pXBC->mStates[i].Gamepad.bAnalogButtons[XINPUT_GAMEPAD_LEFT_TRIGGER];
+		return;
+	}
+}
+
+void	XBC_GetRightTrigger(const XBC *pXBC, BYTE *val)
+{
+	int	i;
+
+	for(i=0;i < 4;i++)
+	{
+		if(!pXBC->mHandles[i])
+		{
+			continue;
+		}
+
+		*val	=pXBC->mStates[i].Gamepad.bAnalogButtons[XINPUT_GAMEPAD_RIGHT_TRIGGER];
+		return;
+	}
+}
+
+void	XBC_GetAnalogRight(const XBC *pXBC, SHORT *pX, SHORT *pY)
+{
+	int	i;
+
+	for(i=0;i < 4;i++)
+	{
+		SHORT	x, y;
+
+		if(!pXBC->mHandles[i])
+		{
+			continue;
+		}
+
+		x	=pXBC->mStates[i].Gamepad.sThumbRX;
+		y	=pXBC->mStates[i].Gamepad.sThumbRY;
+
+		if(x < -XINPUT_DEADZONE)
+		{
+			*pX	=x + XINPUT_DEADZONE;
+		}
+		else if(x > XINPUT_DEADZONE)
+		{
+			*pX	=x - XINPUT_DEADZONE;
+		}
+
+		if(y < -XINPUT_DEADZONE)
+		{
+			*pY	=y + XINPUT_DEADZONE;
+		}
+		else if(y > XINPUT_DEADZONE)
+		{
+			*pY	=y - XINPUT_DEADZONE;
+		}
+
+		break;
+	}
+}
+
 //from the xbox input samples
 void	XBC_CheckPads(XBC *pXBC)
 {

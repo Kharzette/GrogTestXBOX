@@ -266,6 +266,18 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\PilotUI.c">
+		</File>
+		<File
+			RelativePath=".\PilotUI.h">
+		</File>
+		<File
+			RelativePath=".\Ship.c">
+		</File>
+		<File
+			RelativePath=".\Ship.h">
+		</File>
+		<File
 			RelativePath=".\Stars.c">
 		</File>
 		<File

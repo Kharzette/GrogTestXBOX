@@ -1,5 +1,6 @@
 #include	<xtl.h>
 #include	<assert.h>
+#include	<utstring.h>
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 #include	"GrogLibsXBOX/UtilityLib/StringStuff.h"
@@ -62,7 +63,7 @@ UI	*UI_Init(GraphicsDevice *pGD)
 
 BOOL	UI_AddString(UI *pUI, GraphicsDevice *pGD,
 			Font *pFont, LPDIRECT3DTEXTURE8 pFontTex,
-			int maxChars, UT_string *pKey, UT_string *pString)
+			int maxChars, const UT_string *pKey, const UT_string *pString)
 {
 	TextData	*pTD;
 
@@ -77,7 +78,14 @@ BOOL	UI_AddString(UI *pUI, GraphicsDevice *pGD,
 	pTD->mpFont		=pFont;
 	pTD->mpFontTex	=pFontTex;
 
+	//copy string
+	utstring_new(pTD->mpText);
+	utstring_concat(pTD->mpText, pString);
+
 	pTD->mScale.x	=pTD->mScale.y	=1.0f;
+
+	//default white
+	pTD->mColor.x	=pTD->mColor.y	=pTD->mColor.z	=pTD->mColor.w	=1.0f;
 
 	GD_CreateVertexBuffer(pGD, NULL, maxChars * 4, &pTD->mpVB);
 
@@ -96,8 +104,8 @@ static void	DrawCB(const UT_string *pKey, const void *pValue, void *pContext)
 
 	GD_SetTexture(pGD, 0, pText->mpFontTex);
 
-	GD_SetPShaderConstant(pGD, 0, &pText->mColor, 1);
 	GD_SetVShaderConstant(pGD, 0, &posScale, 1);
+	GD_SetPShaderConstant(pGD, 0, &pText->mColor, 1);
 
 	GD_SetStreamSource(pGD, 0, pText->mpVB, sizeof(TextVert));
 	GD_SetIndices(pGD, NULL, 0);
@@ -119,7 +127,6 @@ void	UI_Draw(UI *pUI, GraphicsDevice *pGD)
 	GD_SetRenderState(pGD, D3DRS_SRCBLEND,         D3DBLEND_SRCALPHA );
 	GD_SetRenderState(pGD, D3DRS_DESTBLEND,        D3DBLEND_INVSRCALPHA );
 	GD_SetRenderState(pGD, D3DRS_ALPHATESTENABLE,  FALSE );
-	GD_SetRenderState(pGD, D3DRS_ALPHAREF,         0x08 );
 	GD_SetRenderState(pGD, D3DRS_ALPHAFUNC,        D3DCMP_ALWAYS );
 	GD_SetRenderState(pGD, D3DRS_FILLMODE,         D3DFILL_SOLID );
 	GD_SetRenderState(pGD, D3DRS_CULLMODE,         D3DCULL_NONE );
@@ -137,30 +144,31 @@ void	UI_Draw(UI *pUI, GraphicsDevice *pGD)
 
 	GD_SetRenderState(pGD, D3DRS_CULLMODE, D3DCULL_CCW);
 	GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
+	GD_SetRenderState(pGD, D3DRS_ALPHABLENDENABLE, FALSE );
 }
 
-void	UI_TextSetColour(UI *pUI, UT_string *pKey, D3DXVECTOR4 col)
+void	UI_TextSetColour(UI *pUI, const UT_string *pKey, const D3DXVECTOR4 *pCol)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
-	pText->mColor	=col;
+	pText->mColor	=*pCol;
 }
 
-void	UI_TextSetPosition(UI *pUI, UT_string *pKey, D3DXVECTOR2 pos)
+void	UI_TextSetPosition(UI *pUI, const UT_string *pKey, const D3DXVECTOR2 *pPos)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
-	pText->mPosition	=pos;
+	pText->mPosition	=*pPos;
 }
 
-void	UI_TextSetScale(UI *pUI, UT_string *pKey, D3DXVECTOR2 scale)
+void	UI_TextSetScale(UI *pUI, const UT_string *pKey, const D3DXVECTOR2 *pScale)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
-	pText->mScale	=scale;
+	pText->mScale	=*pScale;
 }
 
-void	UI_TextSetOrigin(UI *pUI, UT_string *pKey, BYTE xOrg, BYTE yOrg)
+void	UI_TextSetOrigin(UI *pUI, const UT_string *pKey, BYTE xOrg, BYTE yOrg)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
@@ -168,7 +176,7 @@ void	UI_TextSetOrigin(UI *pUI, UT_string *pKey, BYTE xOrg, BYTE yOrg)
 	pText->mYOrg	=yOrg;
 }
 
-void	UI_TextSetFont(UI *pUI, UT_string *pKey, Font *pFont, LPDIRECT3DTEXTURE8 pFontTex)
+void	UI_TextSetFont(UI *pUI, const UT_string *pKey, Font *pFont, LPDIRECT3DTEXTURE8 pFontTex)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
@@ -176,14 +184,14 @@ void	UI_TextSetFont(UI *pUI, UT_string *pKey, Font *pFont, LPDIRECT3DTEXTURE8 pF
 	pText->mpFontTex	=pFontTex;
 }
 
-void	UI_TextSetRect(UI *pUI, UT_string *pKey, RECT r)
+void	UI_TextSetRect(UI *pUI, const UT_string *pKey, RECT r)
 {
 	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
 
 	pText->mRect	=r;
 }
 
-void	UI_TextSetText(UI *pUI, UT_string *pKey, UT_string *pText)
+void	UI_TextSetText(UI *pUI, const UT_string *pKey, const UT_string *pText)
 {
 	TextData	*pTD	=DictSZ_GetValue(pUI->mpText, pKey);
 
@@ -197,7 +205,7 @@ void	UI_TextSetText(UI *pUI, UT_string *pKey, UT_string *pText)
 }
 
 //call this whenever something changes that affects the VB
-void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, UT_string *pKey)
+void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, const UT_string *pKey)
 {
 	TextData	*pTD	=DictSZ_GetValue(pUI->mpText, pKey);
 	
