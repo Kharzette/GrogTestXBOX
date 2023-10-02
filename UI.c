@@ -8,6 +8,9 @@
 #include	"GrogLibsXBOX/MaterialLib/Font.h"
 #include	"UI.h"
 
+//see the vertex shader assembler reference page in the docs
+#define	PIXEL_OFFSET	0.0f
+//#define	PIXEL_OFFSET	0.53125f
 
 typedef struct	TextVert_t
 {
@@ -79,6 +82,8 @@ BOOL	UI_AddString(UI *pUI, GraphicsDevice *pGD,
 	GD_CreateVertexBuffer(pGD, NULL, maxChars * 4, &pTD->mpVB);
 
 	DictSZ_Add(&pUI->mpText, pKey, pTD);
+
+	return	TRUE;
 }
 
 static void	DrawCB(const UT_string *pKey, const void *pValue, void *pContext)
@@ -109,7 +114,29 @@ void	UI_Draw(UI *pUI, GraphicsDevice *pGD)
 
 	GD_SetVShaderConstant(pGD, 1, &handyNums, 1);
 
+	//trying some renderstate crap from a sample
+	GD_SetRenderState(pGD, D3DRS_ALPHABLENDENABLE, TRUE );
+	GD_SetRenderState(pGD, D3DRS_SRCBLEND,         D3DBLEND_SRCALPHA );
+	GD_SetRenderState(pGD, D3DRS_DESTBLEND,        D3DBLEND_INVSRCALPHA );
+	GD_SetRenderState(pGD, D3DRS_ALPHATESTENABLE,  FALSE );
+	GD_SetRenderState(pGD, D3DRS_ALPHAREF,         0x08 );
+	GD_SetRenderState(pGD, D3DRS_ALPHAFUNC,        D3DCMP_ALWAYS );
+	GD_SetRenderState(pGD, D3DRS_FILLMODE,         D3DFILL_SOLID );
+	GD_SetRenderState(pGD, D3DRS_CULLMODE,         D3DCULL_NONE );
+	GD_SetRenderState(pGD, D3DRS_ZENABLE,          FALSE );
+	GD_SetRenderState(pGD, D3DRS_STENCILENABLE,    FALSE );
+	GD_SetRenderState(pGD, D3DRS_EDGEANTIALIAS,    FALSE );
+
+	GD_SetTextureStageState(pGD, 0, D3DTSS_MINFILTER, D3DTEXF_LINEAR );
+	GD_SetTextureStageState(pGD, 0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR );
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP );
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSV, D3DTADDRESS_CLAMP );
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSW, D3DTADDRESS_CLAMP );
+
 	DictSZ_ForEach(pUI->mpText, DrawCB, pGD);
+
+	GD_SetRenderState(pGD, D3DRS_CULLMODE, D3DCULL_CCW);
+	GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 }
 
 void	UI_TextSetColour(UI *pUI, UT_string *pKey, D3DXVECTOR4 col)
@@ -192,31 +219,31 @@ void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, UT_string *pKey)
 
 		uv	=Font_GetUV(pTD->mpFont, letter, 0);
 
-		pVerts[i * 4].Position.x	=curWidth;
-		pVerts[i * 4].Position.y	=0.0f;
+		pVerts[i * 4].Position.x	=PIXEL_OFFSET + (float)curWidth;
+		pVerts[i * 4].Position.y	=PIXEL_OFFSET;
 		pVerts[i * 4].Position.z	=uv.x;
 		pVerts[i * 4].Position.w	=uv.y;
 
-		uv	=Font_GetUV(pTD->mpFont, letter, 3);
+		uv	=Font_GetUV(pTD->mpFont, letter, 1);
 
-		pVerts[(i * 4) + 3].Position.x	=nextWidth;
-		pVerts[(i * 4) + 3].Position.y	=0.0f;
-		pVerts[(i * 4) + 3].Position.z	=uv.x;
-		pVerts[(i * 4) + 3].Position.w	=uv.y;
+		pVerts[(i * 4) + 1].Position.x	=PIXEL_OFFSET + (float)nextWidth;
+		pVerts[(i * 4) + 1].Position.y	=PIXEL_OFFSET;
+		pVerts[(i * 4) + 1].Position.z	=uv.x;
+		pVerts[(i * 4) + 1].Position.w	=uv.y;
 
 		uv	=Font_GetUV(pTD->mpFont, letter, 2);
 
-		pVerts[(i * 4) + 2].Position.x	=nextWidth;
-		pVerts[(i * 4) + 2].Position.y	=height;
+		pVerts[(i * 4) + 2].Position.x	=PIXEL_OFFSET + (float)nextWidth;
+		pVerts[(i * 4) + 2].Position.y	=PIXEL_OFFSET + (float)height;
 		pVerts[(i * 4) + 2].Position.z	=uv.x;
 		pVerts[(i * 4) + 2].Position.w	=uv.y;
 
-		uv	=Font_GetUV(pTD->mpFont, letter, 1);
+		uv	=Font_GetUV(pTD->mpFont, letter, 3);
 
-		pVerts[(i * 4) + 1].Position.x	=curWidth;
-		pVerts[(i * 4) + 1].Position.y	=height;
-		pVerts[(i * 4) + 1].Position.z	=uv.x;
-		pVerts[(i * 4) + 1].Position.w	=uv.y;
+		pVerts[(i * 4) + 3].Position.x	=PIXEL_OFFSET + (float)curWidth;
+		pVerts[(i * 4) + 3].Position.y	=PIXEL_OFFSET + (float)height;
+		pVerts[(i * 4) + 3].Position.z	=uv.x;
+		pVerts[(i * 4) + 3].Position.w	=uv.y;
 
 		curWidth	=nextWidth;
 	}

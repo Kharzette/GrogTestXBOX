@@ -1,5 +1,5 @@
 	Load all shaders and just switch with an offset
-	Get text drawing
+x	Get text drawing
 	Think about camera for ship travel stuff
 	Figure out a way to do UI
 		Get basic Piloting UI working

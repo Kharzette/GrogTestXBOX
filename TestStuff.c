@@ -80,7 +80,7 @@ int main(void)
 
 	//shader shtuff
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR4	solidColor0	={	1.0f, 0.1f, 0.1f, 1.0f	};
 	D3DXVECTOR4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
 	D3DXVECTOR4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
 	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
@@ -127,7 +127,8 @@ int main(void)
 	vsHandle	=LoadCompiledVShader(pGD, vertDecl, "D:\\Media\\ShaderLib\\Static.xvu");
 	psHandle	=LoadCompiledPShader(pGD, "D:\\Media\\ShaderLib\\Static.xpu");
 
-	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Test.png");
+//	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\RainbowVomit.png");
+	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Rainbow.png");
 
 	pShuttle	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
 
@@ -142,9 +143,14 @@ int main(void)
 	pUI	=UI_Init(pGD);
 
 	UI_AddString(pUI, pGD, pUIFont, pUITex, 255, pTestMsg, pTestText);
+//	UI_AddString(pUI, pGD, pUIFont, pTestTex, 255, pTestMsg, pTestText);
 
 	UI_TextSetColour(pUI, pTestMsg, specColor);
 	UI_TextSetText(pUI, pTestMsg, pTestText);
+	{
+		D3DXVECTOR2	scoot	={	20.0f, 20.0f	};
+		UI_TextSetPosition(pUI, pTestMsg, scoot);
+	}
 
 	UI_ComputeVB(pUI, pGD, pTestMsg);
 
@@ -238,9 +244,6 @@ int main(void)
 		//camera update
 
 		//bones
-
-
-		GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 
 		//draw gimpy cube
 		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
