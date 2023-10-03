@@ -1,15 +1,13 @@
 #include	<xtl.h>
 #include	<assert.h>
-#include	<utstring.h>
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
-#include	"GrogLibsXBOX/UtilityLib/StringStuff.h"
-#include	"GrogLibsXBOX/UtilityLib/DictionaryStuff.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
 #include	"GrogLibsXBOX/MaterialLib/Font.h"
 #include	"UI.h"
 
 //see the vertex shader assembler reference page in the docs
+//actually looks better without it!?!?
 #define	PIXEL_OFFSET	0.0f
 //#define	PIXEL_OFFSET	0.53125f
 
@@ -27,28 +25,36 @@ typedef struct	TextData_t
 	Font			*mpFont;		//font (don't free)
 	BOOL			mbWordWrap;		//wrap long paragraphs?
 	RECT			mRect;			//place for the text to go
-	UT_string		*mpText;		//actual text
+	char			*szText;		//actual text	
 
 	LPDIRECT3DTEXTURE8		mpFontTex;	//font tex (don't free)
 	IDirect3DVertexBuffer8	*mpVB;		//vbuffer for this gumptext
+	int						mVBSize;	//Num Characters represented in the VB
 }	TextData;
 
 typedef struct	UI_t
 {
-	//onscreen text pieces
-	DictSZ	*mpText;	//string key to TextData
+	//onscreen text pieces array
+	TextData	*mpText;
+	int			mArraySize;
 
 	//text shaders
 	DWORD	mVSHandle, mPSHandle;
 }	UI;
 
 
-UI	*UI_Init(GraphicsDevice *pGD)
+//fixed number of UI strings onscreen
+UI	*UI_Init(GraphicsDevice *pGD, int arraySize)
 {
 	DWORD	vertDecl[3];
 	UI		*pRet		=malloc(sizeof(UI));
 
-	DictSZ_New(&pRet->mpText);
+	//alloc string storage
+	pRet->mpText		=malloc(sizeof(TextData) * arraySize);
+	pRet->mArraySize	=arraySize;
+
+	//clear array
+	memset(pRet->mpText, 0, sizeof(TextData) * arraySize);
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);
@@ -63,44 +69,60 @@ UI	*UI_Init(GraphicsDevice *pGD)
 
 BOOL	UI_AddString(UI *pUI, GraphicsDevice *pGD,
 			Font *pFont, LPDIRECT3DTEXTURE8 pFontTex,
-			int maxChars, const UT_string *pKey, const UT_string *pString)
+			int maxChars, int idx, const char *pString)
 {
 	TextData	*pTD;
 
-	if(DictSZ_ContainsKey(pUI->mpText, pKey))
+	if(idx < 0 || idx > pUI->mArraySize)
 	{
 		return	FALSE;
 	}
 
-	pTD	=malloc(sizeof(TextData));
-	memset(pTD, 0, sizeof(TextData));
+	pTD	=&pUI->mpText[idx];
 
 	pTD->mpFont		=pFont;
 	pTD->mpFontTex	=pFontTex;
 
 	//copy string
-	utstring_new(pTD->mpText);
-	utstring_concat(pTD->mpText, pString);
+	assert(pTD->szText == NULL);
 
+	//alloc chars for the maximum size plus null
+	pTD->szText	=malloc(maxChars + 1);
+	memset(pTD->szText, 0, maxChars + 1);
+
+	strncpy(pTD->szText, pString, maxChars);
+
+	//some defaults
 	pTD->mScale.x	=pTD->mScale.y	=1.0f;
-
-	//default white
 	pTD->mColor.x	=pTD->mColor.y	=pTD->mColor.z	=pTD->mColor.w	=1.0f;
 
-	GD_CreateVertexBuffer(pGD, NULL, maxChars * 4, &pTD->mpVB);
+	//keeping this at a string size
+	pTD->mVBSize	=maxChars;
 
-	DictSZ_Add(&pUI->mpText, pKey, pTD);
+	//I love quads
+	GD_CreateVertexBuffer(pGD, NULL, pTD->mVBSize * sizeof(TextVert) * 4, &pTD->mpVB);
 
 	return	TRUE;
 }
 
-static void	DrawCB(const UT_string *pKey, const void *pValue, void *pContext)
+static void	DrawTD(const TextData *pText, GraphicsDevice *pGD)
 {
-	const TextData	*pText	=(const TextData *)pValue;
-	GraphicsDevice	*pGD	=(GraphicsDevice *)pContext;
-
+	int			len;
 	D3DXVECTOR4	posScale	={ pText->mPosition.x, pText->mPosition.y,
 		pText->mScale.x, pText->mScale.y	};
+
+	if(pText->mpVB == NULL)
+	{
+		return;
+	}
+
+	//make sure no unterminated craziness
+	len	=strlen(pText->szText);
+	if(len == 0 || len > pText->mVBSize)
+	{
+		//TODO: warn or something
+		return;
+	}
 
 	GD_SetTexture(pGD, 0, pText->mpFontTex);
 
@@ -109,7 +131,7 @@ static void	DrawCB(const UT_string *pKey, const void *pValue, void *pContext)
 
 	GD_SetStreamSource(pGD, 0, pText->mpVB, sizeof(TextVert));
 	GD_SetIndices(pGD, NULL, 0);
-	GD_DrawVertices(pGD, D3DPT_QUADLIST, 0, utstring_len(pText->mpText) * 4);
+	GD_DrawVertices(pGD, D3DPT_QUADLIST, 0, strlen(pText->szText) * 4);
 }
 
 void	UI_Draw(UI *pUI, GraphicsDevice *pGD)
@@ -123,96 +145,140 @@ void	UI_Draw(UI *pUI, GraphicsDevice *pGD)
 	GD_SetVShaderConstant(pGD, 1, &handyNums, 1);
 
 	//trying some renderstate crap from a sample
-	GD_SetRenderState(pGD, D3DRS_ALPHABLENDENABLE, TRUE );
-	GD_SetRenderState(pGD, D3DRS_SRCBLEND,         D3DBLEND_SRCALPHA );
-	GD_SetRenderState(pGD, D3DRS_DESTBLEND,        D3DBLEND_INVSRCALPHA );
-	GD_SetRenderState(pGD, D3DRS_ALPHATESTENABLE,  FALSE );
-	GD_SetRenderState(pGD, D3DRS_ALPHAFUNC,        D3DCMP_ALWAYS );
-	GD_SetRenderState(pGD, D3DRS_FILLMODE,         D3DFILL_SOLID );
-	GD_SetRenderState(pGD, D3DRS_CULLMODE,         D3DCULL_NONE );
-	GD_SetRenderState(pGD, D3DRS_ZENABLE,          FALSE );
-	GD_SetRenderState(pGD, D3DRS_STENCILENABLE,    FALSE );
-	GD_SetRenderState(pGD, D3DRS_EDGEANTIALIAS,    FALSE );
+	GD_SetRenderState(pGD, D3DRS_ALPHABLENDENABLE,	TRUE);
+	GD_SetRenderState(pGD, D3DRS_SRCBLEND,			D3DBLEND_SRCALPHA);
+	GD_SetRenderState(pGD, D3DRS_DESTBLEND,			D3DBLEND_INVSRCALPHA);
+	GD_SetRenderState(pGD, D3DRS_ALPHATESTENABLE,	FALSE);
+	GD_SetRenderState(pGD, D3DRS_ALPHAFUNC,			D3DCMP_ALWAYS);
+	GD_SetRenderState(pGD, D3DRS_FILLMODE,			D3DFILL_SOLID);
+	GD_SetRenderState(pGD, D3DRS_CULLMODE,			D3DCULL_NONE);
+	GD_SetRenderState(pGD, D3DRS_ZENABLE,			FALSE);
+	GD_SetRenderState(pGD, D3DRS_STENCILENABLE,		FALSE);
+	GD_SetRenderState(pGD, D3DRS_EDGEANTIALIAS,		FALSE);
 
-	GD_SetTextureStageState(pGD, 0, D3DTSS_MINFILTER, D3DTEXF_LINEAR );
-	GD_SetTextureStageState(pGD, 0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR );
-	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP );
-	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSV, D3DTADDRESS_CLAMP );
-	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSW, D3DTADDRESS_CLAMP );
+	GD_SetTextureStageState(pGD, 0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
+	GD_SetTextureStageState(pGD, 0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR);
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP);
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSV, D3DTADDRESS_CLAMP);
+	GD_SetTextureStageState(pGD, 0, D3DTSS_ADDRESSW, D3DTADDRESS_CLAMP);
 
-	DictSZ_ForEach(pUI->mpText, DrawCB, pGD);
+	//draw all strings
+	{
+		int	i;
+		for(i=0;i < pUI->mArraySize;i++)
+		{
+			DrawTD(&pUI->mpText[i], pGD);
+		}
+	}
 
 	GD_SetRenderState(pGD, D3DRS_CULLMODE, D3DCULL_CCW);
 	GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
 	GD_SetRenderState(pGD, D3DRS_ALPHABLENDENABLE, FALSE );
 }
 
-void	UI_TextSetColour(UI *pUI, const UT_string *pKey, const D3DXVECTOR4 *pCol)
+void	UI_TextSetColour(UI *pUI, int idx, const D3DXVECTOR4 *pCol)
 {
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mColor	=*pCol;
-}
-
-void	UI_TextSetPosition(UI *pUI, const UT_string *pKey, const D3DXVECTOR2 *pPos)
-{
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mPosition	=*pPos;
-}
-
-void	UI_TextSetScale(UI *pUI, const UT_string *pKey, const D3DXVECTOR2 *pScale)
-{
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mScale	=*pScale;
-}
-
-void	UI_TextSetOrigin(UI *pUI, const UT_string *pKey, BYTE xOrg, BYTE yOrg)
-{
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mXOrg	=xOrg;
-	pText->mYOrg	=yOrg;
-}
-
-void	UI_TextSetFont(UI *pUI, const UT_string *pKey, Font *pFont, LPDIRECT3DTEXTURE8 pFontTex)
-{
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mpFont		=pFont;
-	pText->mpFontTex	=pFontTex;
-}
-
-void	UI_TextSetRect(UI *pUI, const UT_string *pKey, RECT r)
-{
-	TextData	*pText	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	pText->mRect	=r;
-}
-
-void	UI_TextSetText(UI *pUI, const UT_string *pKey, const UT_string *pText)
-{
-	TextData	*pTD	=DictSZ_GetValue(pUI->mpText, pKey);
-
-	if(pTD->mpText != NULL)
+	if(idx < 0 || idx > pUI->mArraySize)
 	{
-		utstring_free(pTD->mpText);
+		return;
 	}
-	utstring_new(pTD->mpText);
-
-	utstring_concat(pTD->mpText, pText);
+	pUI->mpText[idx].mColor	=*pCol;
 }
+
+void	UI_TextSetPosition(UI *pUI, int idx, const D3DXVECTOR2 *pPos)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	pUI->mpText[idx].mPosition	=*pPos;
+}
+
+void	UI_TextSetScale(UI *pUI, int idx, const D3DXVECTOR2 *pScale)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	pUI->mpText[idx].mScale	=*pScale;
+}
+
+void	UI_TextSetOrigin(UI *pUI, int idx, BYTE xOrg, BYTE yOrg)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	pUI->mpText[idx].mXOrg	=xOrg;
+	pUI->mpText[idx].mYOrg	=yOrg;
+}
+
+void	UI_TextSetFont(UI *pUI, int idx, Font *pFont, LPDIRECT3DTEXTURE8 pFontTex)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	pUI->mpText[idx].mpFont		=pFont;
+	pUI->mpText[idx].mpFontTex	=pFontTex;
+}
+
+void	UI_TextSetRect(UI *pUI, int idx, RECT r)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	pUI->mpText[idx].mRect	=r;
+}
+
+void	UI_TextSetText(UI *pUI, int idx, const char *pText)
+{
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		return;
+	}
+	//ensure no overflow
+	strncpy(pUI->mpText[idx].szText, pText, pUI->mpText[idx].mVBSize);
+}
+
+//temporary buffer for vb copies
+//the joys of single threading!
+static TextVert	tempBuf[20 * 4];
 
 //call this whenever something changes that affects the VB
-void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, const UT_string *pKey)
+//this is super lazy and probably super slow
+void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, int idx)
 {
-	TextData	*pTD	=DictSZ_GetValue(pUI->mpText, pKey);
-	
-	int	curWidth, i, len	=utstring_len(pTD->mpText);
+	TextVert	*pVerts;
+	TextData	*pTD;
+	int			curWidth, i, len;
 
-	//alloc verts
-	TextVert	*pVerts	=malloc(sizeof(TextVert) * len * 4);
+	if(idx < 0 || idx > pUI->mArraySize)
+	{
+		//TODO: warn
+		return;
+	}
+	pTD	=&pUI->mpText[idx];
+	
+	len	=strlen(pTD->szText);
+
+	//sanity check
+	if(len == 0 || len > pTD->mVBSize)
+	{
+		//TODO: warn
+		return;
+	}
+
+	if(len < 20)
+	{
+		pVerts	=tempBuf;
+	}
+	else
+	{
+		//alloc temp verts
+		pVerts	=malloc(sizeof(TextVert) * len * 4);
+	}
 
 	//start with a basic top left origin one line string
 	curWidth	=0;
@@ -220,7 +286,7 @@ void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, const UT_string *pKey)
 	{
 		D3DXVECTOR2	uv;
 
-		char	letter	=utstring_body(pTD->mpText)[i];
+		char	letter	=pTD->szText[i];
 
 		int	nextWidth	=curWidth + Font_GetCharacterWidth(pTD->mpFont, letter);
 		int	height		=Font_GetCharacterHeight(pTD->mpFont);
@@ -258,5 +324,9 @@ void	UI_ComputeVB(UI *pUI, GraphicsDevice *pGD, const UT_string *pKey)
 
 	GD_SetVBData(pGD, pTD->mpVB, sizeof(TextVert) * len * 4, pVerts);
 
-	free(pVerts);
+	//free verts if needed for a big string
+	if(len >= 20)
+	{
+		free(pVerts);
+	}
 }

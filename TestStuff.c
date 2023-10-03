@@ -25,6 +25,7 @@
 #define	FARCLIP			1000.0f
 #define	NEARCLIP		0.1f
 #define	ANALOG_SCALE	0.0001f
+#define	UI_ARRAY_SIZE	20
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -76,7 +77,6 @@ int main(void)
 	Stars			*pStars;
 	UI				*pUI;
 	Font			*pUIFont;
-	PilotUI			*pPilotUI;
 	Ship			*pShuttle;
 	int				frameCount	=0;
 
@@ -131,11 +131,19 @@ int main(void)
 
 	GD_CreateTextureFromFile(pGD, &pUITex, "D:\\Media\\Fonts\\Bahnschrift40.png");
 
-	pUI	=UI_Init(pGD);
+	pUI	=UI_Init(pGD, UI_ARRAY_SIZE);
 
-	pPilotUI	=PUI_Init(pUI, pGD, pUIFont, pUITex);
+	PUI_Init(pUI, pGD, pUIFont, pUITex);
 
-	pShuttle	=Ship_Init(pShuttleMesh);
+	//wild guesses on these numbers
+	pShuttle	=Ship_Init(pShuttleMesh,
+		4000,	//max thrust
+		1000,	//fuel max
+		1000,	//O2 max
+		20,		//cargo max in tons
+		120,	//hull max
+		10,		//mass in tons
+		500);	//inertia tensor
 
 
 	while(bRunning)
@@ -162,10 +170,10 @@ int main(void)
 			XBC_GetAnalogRight(pXBC, &rightX, &rightY);
 			XBC_GetRightTrigger(pXBC, &throttle);
 
-			Ship_Turn(pShuttle, dt, rightY * ANALOG_SCALE,
-				rightX * ANALOG_SCALE, 0.0f);
+			Ship_Turn(pShuttle, rightY * dt * ANALOG_SCALE,
+				rightX * dt * ANALOG_SCALE, 0.0f);
 
-			Ship_Accelerate(pShuttle, dt, throttle);
+			Ship_Throttle(pShuttle, throttle);
 
 			Ship_Update(pShuttle, dt);
 
@@ -187,7 +195,7 @@ int main(void)
 		if(frameCount >=10)
 		{
 			frameCount	-=10;
-			Ship_UpdateUI(pShuttle, pPilotUI, pGD);
+			Ship_UpdateUI(pShuttle, pUI, pGD);
 		}
 
 		//clear

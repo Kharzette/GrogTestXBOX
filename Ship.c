@@ -3,39 +3,63 @@
 #include	"GrogLibsXBOX/MeshLib/Mesh.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
+#include	"GrogLibsXBOX/UtilityLib/Physics.h"
 
+#define	SOLAR_WIND_DRAG	0.00001f
 
 typedef struct	Ship_t
 {
 	Mesh		*mpMesh;
+	Physics		*mpPhysics;
+
+	//big position
+	int	mSectorX, mSectorY, mSectorZ;
+
+	//orientation
 	D3DXMATRIX	mMat;
+	D3DXVECTOR3	mForward, mUp;
+	D3DXVECTOR3	mAttitude;	//lazy gamey turning
 
-	D3DXVECTOR3	mPosition;
-	D3DXVECTOR3	mAttitude;	//in yaw/pitch/roll
-
-	D3DXVECTOR3	mForward;
-	D3DXVECTOR3	mUp;
-
-	D3DXVECTOR3	mVelocity;
-	float		mAcceleration;
+	//movement
+	D3DXVECTOR3	mLastV;			//track velocity over update time for accel calc
+	float		mUIAccel;		//smoothed accel for the UI
+	float		mTotalDT;		//time smoothed
+	int			mNumUpdates;	//num physics update per render
 
 	int	mFuel, mFuelMax;
 	int	mO2, mO2Max;
 	int	mCargo, mCargoMax;
 	int	mHull, mHullMax;
+	int	mMaxThrust;			//max output from main engines
+	int	mMass;				//track here to update phys + weight of fuel and cargo etc
 	
 	float	mHeat;
 	float	mRadiatorsExtendPercent;
 }	Ship;
 
 
-Ship	*Ship_Init(Mesh *pMesh)
+Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
+					int cargoMax, int hullMax, int mass, int it)
 {
 	Ship	*pRet	=malloc(sizeof(Ship));
 
 	memset(pRet, 0, sizeof(Ship));
 
+	pRet->mpPhysics	=Physics_Init();
+
+	pRet->mUp.y	=pRet->mForward.z	=1.0f;
+
 	pRet->mpMesh	=pMesh;
+	pRet->mFuel		=pRet->mFuelMax		=fuelMax;
+	pRet->mO2		=pRet->mO2Max		=o2Max;
+	pRet->mHull		=pRet->mHullMax		=hullMax;
+	pRet->mMass		=mass;
+	pRet->mHeat		=300;	//default 80ish deg F
+	pRet->mCargoMax	=cargoMax;
+
+	pRet->mMaxThrust	=maxThrust;
+
+	Physics_SetProps(pRet->mpPhysics, mass, it, SOLAR_WIND_DRAG);
 
 	return	pRet;
 }
@@ -44,61 +68,96 @@ Ship	*Ship_Init(Mesh *pMesh)
 //deltaTime in seconds
 void	Ship_Update(Ship *pShip, float dt)
 {
-	D3DXVECTOR3	vdt;
+	D3DXVECTOR3		side	={	1.0f, 0.0f, 0.0f	};
+	D3DXVECTOR3		up		={	0.0f, 1.0f, 0.0f	};
+	D3DXVECTOR3		forward	={	0.0f, 0.0f, 1.0f	};
+//	D3DXQUATERNION	orient;
 
-	//the easy way
-	float	boost	=pShip->mAcceleration * dt;
+	Physics_Update(pShip->mpPhysics, dt);
 
-	D3DXVECTOR3	pushVec	={	0.0f, 0.0f, 0.0f	};
+//	Physics_GetOrient(pShip->mpPhysics, &orient);
 
-	D3DXVec3Scale(&pushVec, &pShip->mForward, boost);
-
-	D3DXVec3Add(&pShip->mVelocity, &pShip->mVelocity, &pushVec);
-
-	D3DXVec3Scale(&vdt, &pShip->mVelocity, dt);
-
-	D3DXVec3Add(&pShip->mPosition, &pShip->mPosition, &vdt);
-
-	//clear accel
-	pShip->mAcceleration	=0.0f;
-}
-
-
-void	Ship_UpdateUI(Ship *pShip, PilotUI *pUI, GraphicsDevice *pGD)
-{
-	float	heading	=pShip->mAttitude.y;
-	float	nadir	=pShip->mAttitude.x;
-
-	PUI_UpdateValues(pUI, pGD,
-		D3DXVec3Length(&pShip->mVelocity),
-		pShip->mAcceleration, pShip->mFuel,
-		pShip->mO2, pShip->mCargo, pShip->mCargoMax, pShip->mHull,
-		pShip->mHullMax, 1, 1, (int)heading, (int)nadir, 0, 0, pShip->mHeat,
-		pShip->mRadiatorsExtendPercent);
-}
-
-
-void	Ship_Turn(Ship *pShip, float dt, float deltaPitch, float deltaYaw, float deltaRoll)
-{
-	D3DXVECTOR3	forward	={	0.0f, 0.0f, 1.0f	};
-
-	pShip->mAttitude.x	+=(deltaPitch * dt);
-	pShip->mAttitude.y	+=(deltaYaw * dt);
-	pShip->mAttitude.z	+=(deltaRoll * dt);
-
-	pShip->mAttitude.x	=WrapAngleDegrees(pShip->mAttitude.x);
-	pShip->mAttitude.y	=WrapAngleDegrees(pShip->mAttitude.y);
-	pShip->mAttitude.z	=WrapAngleDegrees(pShip->mAttitude.z);
-
-	D3DXMatrixRotationYawPitchRoll(&pShip->mMat, pShip->mAttitude.y, pShip->mAttitude.x, pShip->mAttitude.z);
+//	D3DXMatrixRotationQuaternion(&pShip->mMat, &orient);
 
 	D3DXVec3TransformNormal(&pShip->mForward, &forward, &pShip->mMat);
+	D3DXVec3TransformNormal(&pShip->mUp, &up, &pShip->mMat);
+
+	pShip->mTotalDT	+=dt;
 }
 
 
-void	Ship_Accelerate(Ship *pShip, float dt, BYTE throttle)
+void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 {
-	pShip->mAcceleration	=dt * throttle;
+	D3DXVECTOR3		v, deltaV;
+
+	Physics_GetVelocity(pShip->mpPhysics, &v);
+
+	//smooth accumulated accel
+	if(pShip->mTotalDT > 0.0f)
+	{
+		D3DXVec3Subtract(&deltaV, &v, &pShip->mLastV);
+
+		pShip->mUIAccel	=D3DXVec3Length(&deltaV);
+
+		pShip->mUIAccel	/=pShip->mTotalDT;
+
+		pShip->mUIAccel	/=9.8f;	//convert to G
+	}
+
+	PUI_UpdateValues(pUI, pGD,
+		D3DXVec3Length(&v),
+		pShip->mUIAccel, pShip->mFuel,
+		pShip->mO2, pShip->mCargo, pShip->mCargoMax, pShip->mHull,
+		pShip->mHullMax, 1, 1,
+		(int)D3DXToDegree(pShip->mAttitude.y),
+		(int)D3DXToDegree(pShip->mAttitude.x), 0, 0,
+		pShip->mHeat, pShip->mRadiatorsExtendPercent);
+
+	pShip->mNumUpdates	=0;
+	pShip->mTotalDT		=0.0f;
+	pShip->mUIAccel		=0.0f;
+	pShip->mLastV		=v;
+}
+
+
+void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
+{
+//	D3DXVECTOR3	side	={	1.0f, 0.0f, 0.0f	};
+//	D3DXVECTOR3	up		={	0.0f, 1.0f, 0.0f	};
+//	D3DXVECTOR3	forward	={	0.0f, 0.0f, 1.0f	};
+	
+//	D3DXVec3Scale(&side, &side, deltaPitch);
+//	D3DXVec3Scale(&up, &up, deltaYaw);
+//	D3DXVec3Scale(&forward, &forward, deltaRoll);
+
+    pShip->mAttitude.x    +=deltaPitch;
+    pShip->mAttitude.y    +=deltaYaw;
+    pShip->mAttitude.z    +=deltaRoll;
+
+    pShip->mAttitude.x    =WrapAngleRadians(pShip->mAttitude.x);
+    pShip->mAttitude.y    =WrapAngleRadians(pShip->mAttitude.y);
+    pShip->mAttitude.z    =WrapAngleRadians(pShip->mAttitude.z);
+
+    D3DXMatrixRotationYawPitchRoll(&pShip->mMat, pShip->mAttitude.y, pShip->mAttitude.x, pShip->mAttitude.z);
+//	Physics_ApplyTorque(pShip->mpPhysics, &side);
+//	Physics_ApplyTorque(pShip->mpPhysics, &up);
+//	Physics_ApplyTorque(pShip->mpPhysics, &forward);
+}
+
+
+void	Ship_Throttle(Ship *pShip, BYTE throttle)
+{
+	D3DXVECTOR3	force;
+
+	if(!throttle)
+	{
+		return;
+	}
+
+	D3DXVec3Scale(&force, &pShip->mForward,
+		(throttle / 255.0f) * pShip->mMaxThrust);
+
+	Physics_ApplyForce(pShip->mpPhysics, &force);
 }
 
 

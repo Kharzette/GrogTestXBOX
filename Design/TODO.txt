@@ -1,6 +1,16 @@
 	Load all shaders and just switch with an offset
 x	Get text drawing
+x	Stop all the memory thrash of text
 	Think about camera for ship travel stuff
-	Figure out a way to do UI
-		Get basic Piloting UI working
-		
+x	Figure out a way to do UI
+x		Get basic Piloting UI working
+	Rumble with engine throttle
+	Think about relative velocities
+		Velocity relative to nearest point of interest?
+		Maybe have outer stuff fixed in place for now?
+	Draw a sun
+	Make some other ships
+	Make some installations / orbitals
+	Figure out how to do huge distances
+	Physics numbers are big
+		Maybe use fractional tons for mass?

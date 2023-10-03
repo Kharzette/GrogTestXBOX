@@ -2,130 +2,196 @@
 #include	"UI.h"
 #include	<utstring.h>
 
+#define	VELOCITY_IDX	0
+#define	ACCEL_IDX		1
+#define	FUEL_IDX		2
+#define	O2_IDX			3
+#define	CARGO_IDX		4
+#define	PASSENGER_IDX	5
+#define	HEADING_IDX		6
+#define	WAY_HEADING_IDX	7
+#define	HEAT_IDX		8
+#define	HULL_IDX		9
+#define	RAD_EXTEND_IDX	10
+#define	IDX_COUNT		11
 
-typedef struct	PilotUI_t
+
+void	PUI_Init(UI *pUI, GraphicsDevice *pGD, Font *pFont, LPDIRECT3DTEXTURE8 pFTex)
 {
-	UI	*pUI;
-
-	UT_string	*mpszVelocity;
-	UT_string	*mpszAccel;
-	UT_string	*mpszFuelAir;
-	UT_string	*mpszCargo;
-	UT_string	*mpszPassengers;
-	UT_string	*mpszNav;
-	UT_string	*mpszHeat;
-
-}	PilotUI;
-
-
-PilotUI	*PUI_Init(UI *pUI, GraphicsDevice *pGD, Font *pFont, LPDIRECT3DTEXTURE8 pFTex)
-{
-	UT_string	*pDummy;
-	PilotUI		*pRet	=malloc(sizeof(PilotUI));
-
-	memset(pRet, 0, sizeof(PilotUI));
-
-	pRet->pUI	=pUI;
-
-	//strings for piloting UI
-	utstring_new(pRet->mpszVelocity);
-	utstring_new(pRet->mpszAccel);
-	utstring_new(pRet->mpszFuelAir);
-	utstring_new(pRet->mpszCargo);
-	utstring_new(pRet->mpszPassengers);
-	utstring_new(pRet->mpszNav);
-	utstring_new(pRet->mpszHeat);
-
-	utstring_new(pDummy);
-
-	utstring_printf(pRet->mpszVelocity, "V");
-	utstring_printf(pRet->mpszAccel, "A");
-	utstring_printf(pRet->mpszFuelAir, "FA");
-	utstring_printf(pRet->mpszCargo, "C");
-	utstring_printf(pRet->mpszPassengers, "P");
-	utstring_printf(pRet->mpszNav, "N");
-	utstring_printf(pRet->mpszHeat, "H");
-
-	utstring_printf(pDummy, "blort");
-	UI_AddString(pUI, pGD, pFont, pFTex, 16, pRet->mpszVelocity, pDummy);
-	UI_AddString(pUI, pGD, pFont, pFTex, 16, pRet->mpszAccel, pDummy);
-	UI_AddString(pUI, pGD, pFont, pFTex, 16, pRet->mpszFuelAir, pDummy);
-	UI_AddString(pUI, pGD, pFont, pFTex, 20, pRet->mpszCargo, pDummy);
-//	UI_AddString(pUI, pGD, pFont, pFTex, 16, pRet->mpszPassengers, pDummy);
-	UI_AddString(pUI, pGD, pFont, pFTex, 16, pRet->mpszNav, pDummy);
-	UI_AddString(pUI, pGD, pFont, pFTex, 20, pRet->mpszHeat, pDummy);
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, VELOCITY_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, ACCEL_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, FUEL_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, O2_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 20, CARGO_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 20, PASSENGER_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 20, HEADING_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, WAY_HEADING_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, HEAT_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 16, HULL_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 20, RAD_EXTEND_IDX, "Blort");
 
 	{
 		D3DXVECTOR2	half	={	0.5f, 0.5f	};
-		UI_TextSetScale(pUI, pRet->mpszVelocity, &half);
-		UI_TextSetScale(pUI, pRet->mpszAccel, &half);
-		UI_TextSetScale(pUI, pRet->mpszFuelAir, &half);
-		UI_TextSetScale(pUI, pRet->mpszCargo, &half);
-		UI_TextSetScale(pUI, pRet->mpszNav, &half);
-		UI_TextSetScale(pUI, pRet->mpszHeat, &half);
+		int	i;
+
+		for(i=0;i < IDX_COUNT;i++)
+		{
+			UI_TextSetScale(pUI, i, &half);
+		}
 	}
 
 	{
 		D3DXVECTOR2	pos	={	20.0f, 20.0f	};
 
-		UI_TextSetPosition(pUI, pRet->mpszVelocity, &pos);
+		UI_TextSetPosition(pUI, VELOCITY_IDX, &pos);
 
 		pos.y	+=30;
-		UI_TextSetPosition(pUI, pRet->mpszAccel, &pos);
+		UI_TextSetPosition(pUI, ACCEL_IDX, &pos);
 
-		pos.x	=600;
+		pos.x	=540;
 		pos.y	=20;
-		UI_TextSetPosition(pUI, pRet->mpszFuelAir, &pos);
+		UI_TextSetPosition(pUI, FUEL_IDX, &pos);
 
 		pos.y	+=30;
-		UI_TextSetPosition(pUI, pRet->mpszCargo, &pos);
+		UI_TextSetPosition(pUI, O2_IDX, &pos);
+
+		pos.x	=520;
+		pos.y	=400;
+		UI_TextSetPosition(pUI, CARGO_IDX, &pos);
+
+		pos.y	+=30;
+		UI_TextSetPosition(pUI, HULL_IDX, &pos);
+
+		pos.y	-=60;
+		UI_TextSetPosition(pUI, PASSENGER_IDX, &pos);
+
+		pos.x	=290;
+		pos.y	=400;
+		UI_TextSetPosition(pUI, WAY_HEADING_IDX, &pos);
 
 		pos.x	=290;
 		pos.y	=20;
-		UI_TextSetPosition(pUI, pRet->mpszNav, &pos);
+		UI_TextSetPosition(pUI, HEADING_IDX, &pos);
 
 		pos.x	=20;
-		pos.y	=440;
-		UI_TextSetPosition(pUI, pRet->mpszHeat, &pos);
+		pos.y	=400;
+		UI_TextSetPosition(pUI, HEAT_IDX, &pos);
+
+		pos.y	+=30;
+		UI_TextSetPosition(pUI, RAD_EXTEND_IDX, &pos);
 	}
 
-	utstring_free(pDummy);
-
-	UI_ComputeVB(pUI, pGD, pRet->mpszVelocity);
-	UI_ComputeVB(pUI, pGD, pRet->mpszAccel);
-	UI_ComputeVB(pUI, pGD, pRet->mpszFuelAir);
-	UI_ComputeVB(pUI, pGD, pRet->mpszCargo);
-	UI_ComputeVB(pUI, pGD, pRet->mpszNav);
-	UI_ComputeVB(pUI, pGD, pRet->mpszHeat);
-
-	return	pRet;
+	{
+		int	i;
+		for(i=0;i < IDX_COUNT;i++)
+		{
+			UI_ComputeVB(pUI, pGD, i);
+		}
+	}
 }
 
 
-void	PUI_UpdateValues(PilotUI *pUI, GraphicsDevice *pGD,
+void	PUI_UpdateValues(UI *pUI, GraphicsDevice *pGD,
 			float v, float accel, int fuel,
 			int o2, int cargo, int cargoMax, int hullHealth,
 			int hullMax, int passengers, int passengerMax, int heading,
 			int nadir, int wayHeading, int wayNadir, int heat,
 			float coolingExtendPercent)
 {
-	UT_string	*pDummy;
+	char	buf[32];
 
-	utstring_new(pDummy);
-
-	if(v > 1000)
+	if(v >= 1000)
 	{
 		v	/=1000;
-		utstring_printf(pDummy, "%4.2f km/s", v);
+		sprintf(buf, "%4.2f km/s", v);
 	}
 	else
 	{
-		utstring_printf(pDummy, "%4.2f m/s", v);
+		sprintf(buf, "%4.2f m/s", v);
 	}
+	UI_TextSetText(pUI, VELOCITY_IDX, buf);
 
-	UI_TextSetText(pUI->pUI, pUI->mpszVelocity, pDummy);
+	sprintf(buf, "%4.2f G", accel);
+	UI_TextSetText(pUI, ACCEL_IDX, buf);
 
-	utstring_free(pDummy);
+	//wrap into  positive
+	if(heading < 0)
+	{
+		heading	+=360;
+	}
+	sprintf(buf, "HDG: %d, %d", heading, -nadir);
+	UI_TextSetText(pUI, HEADING_IDX, buf);
 
-	UI_ComputeVB(pUI->pUI, pGD, pUI->mpszVelocity);
+	if(fuel >= 10000)
+	{
+		sprintf(buf, "Fuel: %4.2f T", fuel / 10000.0f);
+	}
+	else if(fuel >= 1000)
+	{
+		sprintf(buf, "Fuel: %4.2f kg", fuel / 1000.0f);
+	}
+	else
+	{
+		sprintf(buf, "Fuel: %d g", fuel);
+	}	
+	UI_TextSetText(pUI, FUEL_IDX, buf);
+
+	sprintf(buf, "O2: %d", o2);
+	UI_TextSetText(pUI, O2_IDX, buf);
+
+	if(cargoMax >= 10000)
+	{
+		if(cargo >= 10000)
+		{
+			sprintf(buf, "CRG %4.2f/%4.2f T", cargo, cargoMax);
+		}
+		else		
+		{
+			sprintf(buf, "CRG %1.4f/%4.2f T", cargo, cargoMax);
+		}
+	}
+	else if(cargoMax >= 1000)
+	{
+		if(cargo >= 1000)
+		{
+			sprintf(buf, "CRG %4.2f/%4.2f kg", cargo, cargoMax);
+		}
+		else
+		{
+			sprintf(buf, "CRG %1.4f/%4.2f kg", cargo, cargoMax);
+		}
+	}
+	else
+	{
+		sprintf(buf, "CRG %d/%d g", cargo, cargoMax);
+	}
+	UI_TextSetText(pUI, CARGO_IDX, buf);
+
+	sprintf(buf, "PSNGRS: %d/%d", passengers, passengerMax);
+	UI_TextSetText(pUI, PASSENGER_IDX, buf);
+
+	//wrap into  positive
+	if(wayHeading < 0)
+	{
+		wayHeading	+=360;
+	}
+	sprintf(buf, "WAY: %d, %d", wayHeading, -wayNadir);
+	UI_TextSetText(pUI, WAY_HEADING_IDX, buf);
+
+	sprintf(buf, "CORE: %d K", heat);
+	UI_TextSetText(pUI, HEAT_IDX, buf);
+
+	sprintf(buf, "HULL: %d%%", (int)(hullHealth / (float)hullMax) * 100);
+	UI_TextSetText(pUI, HULL_IDX, buf);
+
+	sprintf(buf, "RAD: %d%%", (int)(coolingExtendPercent * 100));
+	UI_TextSetText(pUI, RAD_EXTEND_IDX, buf);
+
+	{
+		int	i;
+		for(i=0;i < IDX_COUNT;i++)
+		{
+			UI_ComputeVB(pUI, pGD, i);
+		}
+	}
 }
