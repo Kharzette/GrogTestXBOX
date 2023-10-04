@@ -33,11 +33,10 @@ static void	RotationQuat(const D3DXVECTOR3 *pPYR, D3DXQUATERNION *pOut)
 		pPYR->y, pPYR->x, pPYR->z);
 }
 
-void	DroneCam_GetCameraMatrix(DroneCam *pDC,
-			D3DXQUATERNION *pAttachedRot, D3DXMATRIX *pMat)
+void	DroneCam_GetCameraMatrix(const DroneCam *pDC,
+			const D3DXQUATERNION *pAttachedRot, D3DXMATRIX *pMat)
 {
 	D3DXVECTOR3		translation	={	0.0f, 0.0f, 1.0f	};
-	D3DXMATRIX		rot;
 	D3DXQUATERNION	combined;
 
 	//combine tracking object + view rotation

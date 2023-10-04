@@ -111,14 +111,12 @@ int main(void)
 
 	//wild guesses on these numbers
 	pShuttle	=Ship_Init(pShuttleMesh,
-		4000,	//max thrust
-		1000,	//fuel max
-		1000,	//O2 max
-		20,		//cargo max in tons
-		120,	//hull max
-		10,		//mass in tons
-		500);	//inertia tensor
-
+		4000,		//max thrust
+		10000,		//fuel max
+		1000,		//O2 max
+		20000000,	//cargo max in grams
+		120,		//hull max
+		10000000);	//mass in grams
 
 	while(bRunning)
 	{

@@ -8,9 +8,20 @@ x		Get basic Piloting UI working
 	Think about relative velocities
 		Velocity relative to nearest point of interest?
 		Maybe have outer stuff fixed in place for now?
-	Draw a sun
+	Sun/planets/roids
+		Textured spheres good enough?
 	Make some other ships
+		Slow, old, beat up starter shuttle
+		Freighters
+		Frigates
+		Fighters
+		Cruisers
+		Carriers
+		Yachts for rich people
 	Make some installations / orbitals
+		Multiring stations
+		Asteroid orbitals
+		Military stations	
 	Figure out how to do huge distances
 	Physics numbers are big
 		Maybe use fractional tons for mass?

@@ -6,8 +6,8 @@ typedef struct	Mesh_t				Mesh;
 typedef struct	UI_t				UI;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 
-Ship	*Ship_Init(Mesh *pMesh, int maxThrust,
-		int fuelMax, int o2Max, int cargoMax, int hullMax, int mass, int it);
+Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust,
+		INT64 fuelMax, int o2Max, INT64 cargoMax, int hullMax, INT64 mass);
 void	Ship_Update(Ship *pShip, float dt);
 void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD);
 

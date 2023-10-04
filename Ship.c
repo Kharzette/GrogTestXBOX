@@ -6,6 +6,7 @@
 #include	"GrogLibsXBOX/UtilityLib/Physics.h"
 
 #define	SOLAR_WIND_DRAG	0.00001f
+#define	INERTIA_TENSOR	69	//this doesn't do anything yet
 
 typedef struct	Ship_t
 {
@@ -21,23 +22,23 @@ typedef struct	Ship_t
 	//movement
 	D3DXVECTOR3	mLastV;			//track velocity over update time for accel calc
 	float		mUIAccel;		//smoothed accel for the UI
-	float		mTotalDT;		//time smoothed
+	float		mTotalDT;		//time smoothed for UI updates
 	int			mNumUpdates;	//num physics update per render
 
-	int	mFuel, mFuelMax;
-	int	mO2, mO2Max;
-	int	mCargo, mCargoMax;
-	int	mHull, mHullMax;
-	int	mMaxThrust;			//max output from main engines
-	int	mMass;				//track here to update phys + weight of fuel and cargo etc
+	INT64	mFuel, mFuelMax;	//in grams
+	INT64	mCargo, mCargoMax;	//in grams
+	INT64	mMaxThrust;			//max output from main engines
+	INT64	mMass;				//track here to update phys + weight of fuel and cargo etc
+	int		mHull, mHullMax;
+	int		mO2, mO2Max;
 	
 	float	mHeat;
 	float	mRadiatorsExtendPercent;
 }	Ship;
 
 
-Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
-					int cargoMax, int hullMax, int mass, int it)
+Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust, INT64 fuelMax, int o2Max,
+					INT64 cargoMax, int hullMax, INT64 mass)
 {
 	Ship	*pRet	=malloc(sizeof(Ship));
 
@@ -57,13 +58,16 @@ Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
 
 	D3DXQuaternionIdentity(&pRet->mRot);
 
-	Physics_SetProps(pRet->mpPhysics, mass, it, SOLAR_WIND_DRAG);
+	Physics_SetProps(pRet->mpPhysics,
+		mass / 1000000.0f,	//mass in fractional tons?
+		INERTIA_TENSOR, SOLAR_WIND_DRAG);
 
 	return	pRet;
 }
 
 
-float	Ship_GetHeading(const Ship *pShip)
+//degrees
+static int	Ship_GetHeading(const Ship *pShip)
 {
 	float		dot, dot2, heading;
 	D3DXVECTOR3	forward, zax	={	0.0f, 0.0f, 1.0f	};
@@ -76,17 +80,17 @@ float	Ship_GetHeading(const Ship *pShip)
 	dot		=D3DXVec3Dot(&forward, &zax);
 	dot2	=D3DXVec3Dot(&xax, &forward);
 
-	heading	=acos(dot);
+	heading	=(float)acos((float)dot);
 
 	//this determines the quadrant
 	if(dot2 < 0.0f)
 	{
 		heading	=(D3DX_PI * 2.0f) - heading;
 	}
-	return	heading;
+	return	(int)D3DXToDegree(heading);
 }
 
-float	Ship_GetNadir(const Ship *pShip)
+static int	Ship_GetNadir(const Ship *pShip)
 {
 	float		dot;
 	D3DXVECTOR3	forward, zax	={	0.0f, 0.0f, 1.0f	};
@@ -97,7 +101,55 @@ float	Ship_GetNadir(const Ship *pShip)
 
 	dot		=D3DXVec3Dot(&forward, &yax);
 
-	return	dot * (D3DX_PI * 0.5f);
+	return	(int)D3DXToDegree(dot * (D3DX_PI * 0.5f));
+}
+
+static int	Ship_GetVelocityHeading(const Ship *pShip)
+{
+	float		dot, dot2, heading;
+	D3DXVECTOR3	vel, zax	={	0.0f, 0.0f, 1.0f	};
+	D3DXVECTOR3	xax			={	1.0f, 0.0f, 0.0f	};
+
+	float	len	=D3DXVec3Length(&pShip->mLastV);
+	if(len <= 0.0f)
+	{
+		return	0;
+	}
+
+	//normalize
+	D3DXVec3Scale(&vel, &pShip->mLastV, 1.0f / len);
+
+	//dots... more dots
+	dot		=D3DXVec3Dot(&vel, &zax);
+	dot2	=D3DXVec3Dot(&xax, &vel);
+
+	heading	=(float)acos((float)dot);
+
+	//this determines the quadrant
+	if(dot2 < 0.0f)
+	{
+		heading	=(D3DX_PI * 2.0f) - heading;
+	}
+	return	(int)D3DXToDegree(heading);
+}
+
+static int	Ship_GetVelocityNadir(const Ship *pShip)
+{
+	float		dot;
+	D3DXVECTOR3	vel, yax	={	0.0f, 1.0f, 0.0f	};
+
+	float	len	=D3DXVec3Length(&pShip->mLastV);
+	if(len <= 0.0f)
+	{
+		return	0;
+	}
+
+	//normalize
+	D3DXVec3Scale(&vel, &pShip->mLastV, 1.0f / len);
+
+	dot		=D3DXVec3Dot(&vel, &yax);
+
+	return	(int)D3DXToDegree(dot * (D3DX_PI * 0.5f));
 }
 
 const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip)
@@ -119,8 +171,14 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 {
 	D3DXVECTOR3		v, deltaV;
 
-	float	heading	=Ship_GetHeading(pShip);
-	float	nadir	=Ship_GetNadir(pShip);
+	int	heading		=Ship_GetHeading(pShip);
+	int	nadir		=Ship_GetNadir(pShip);
+	int	velHeading	=Ship_GetVelocityHeading(pShip);
+	int	velNadir	=Ship_GetVelocityNadir(pShip);
+
+	//opposite direction for braking
+	int	brkHeading	=(velHeading + 180) % 360;
+	int	brkNadir	=-velNadir;
 
 	Physics_GetVelocity(pShip->mpPhysics, &v);
 
@@ -141,9 +199,9 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 		pShip->mUIAccel, pShip->mFuel,
 		pShip->mO2, pShip->mCargo, pShip->mCargoMax, pShip->mHull,
 		pShip->mHullMax, 1, 1,
-		(int)D3DXToDegree(heading),
-		(int)D3DXToDegree(nadir), 0, 0,
-		pShip->mHeat, pShip->mRadiatorsExtendPercent);
+		heading, nadir, 0, 0,
+		pShip->mHeat, pShip->mRadiatorsExtendPercent,
+		velHeading, velNadir, brkHeading, brkNadir);
 
 	pShip->mNumUpdates	=0;
 	pShip->mTotalDT		=0.0f;
@@ -174,12 +232,15 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
 
 void	Ship_Throttle(Ship *pShip, BYTE throttle)
 {
-	D3DXVECTOR3	force	={	pShip->mRot.x, pShip->mRot.y, pShip->mRot.z	};
+	D3DXVECTOR3	force, zax	={	0.0f, 0.0f, 1.0f	};
 
 	if(!throttle)
 	{
 		return;
 	}
+
+	//rotate basis vector into quat space
+	RotateVec(&pShip->mRot, &zax, &force);
 
 	D3DXVec3Scale(&force, &force,
 		(throttle / 255.0f) * pShip->mMaxThrust);
