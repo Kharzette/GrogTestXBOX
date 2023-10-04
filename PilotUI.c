@@ -119,7 +119,7 @@ void	PUI_UpdateValues(UI *pUI, GraphicsDevice *pGD,
 	{
 		heading	+=360;
 	}
-	sprintf(buf, "HDG: %d, %d", heading, -nadir);
+	sprintf(buf, "HDG: %d, %d", heading, nadir);
 	UI_TextSetText(pUI, HEADING_IDX, buf);
 
 	if(fuel >= 10000)

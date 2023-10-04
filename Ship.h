@@ -17,4 +17,7 @@ void	Ship_Throttle(Ship *pShip, BYTE throttle);
 void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 				D3DXMATRIX *pView, D3DXMATRIX *pProj);
 
-const D3DXVECTOR3	*Ship_GetAttitude(Ship *pShip);
+float	Ship_GetHeading(const Ship *pShip);
+float	Ship_GetNadir(const Ship *pShip);
+
+const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip);

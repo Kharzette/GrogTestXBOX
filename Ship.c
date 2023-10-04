@@ -16,7 +16,6 @@ typedef struct	Ship_t
 	int	mSectorX, mSectorY, mSectorZ;
 
 	//orientation
-	D3DXVECTOR3		mAttitude;	//lazy gamey turning
 	D3DXQUATERNION	mRot;
 
 	//movement
@@ -64,9 +63,46 @@ Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
 }
 
 
-const D3DXVECTOR3	*Ship_GetAttitude(Ship *pShip)
+float	Ship_GetHeading(const Ship *pShip)
 {
-	return	&pShip->mAttitude;
+	float		dot, dot2, heading;
+	D3DXVECTOR3	forward, zax	={	0.0f, 0.0f, 1.0f	};
+	D3DXVECTOR3	xax				={	1.0f, 0.0f, 0.0f	};
+
+	//rotate basis vectors into quat space
+	RotateVec(&pShip->mRot, &zax, &forward);
+
+	//dots... more dots
+	dot		=D3DXVec3Dot(&forward, &zax);
+	dot2	=D3DXVec3Dot(&xax, &forward);
+
+	heading	=acos(dot);
+
+	//this determines the quadrant
+	if(dot2 < 0.0f)
+	{
+		heading	=(D3DX_PI * 2.0f) - heading;
+	}
+	return	heading;
+}
+
+float	Ship_GetNadir(const Ship *pShip)
+{
+	float		dot;
+	D3DXVECTOR3	forward, zax	={	0.0f, 0.0f, 1.0f	};
+	D3DXVECTOR3	yax				={	0.0f, 1.0f, 0.0f	};
+
+	//rotate basis vectors into quat space
+	RotateVec(&pShip->mRot, &zax, &forward);
+
+	dot		=D3DXVec3Dot(&forward, &yax);
+
+	return	dot * (D3DX_PI * 0.5f);
+}
+
+const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip)
+{
+	return	&pShip->mRot;
 }
 
 
@@ -87,6 +123,9 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 {
 	D3DXVECTOR3		v, deltaV;
 
+	float	heading	=Ship_GetHeading(pShip);
+	float	nadir	=Ship_GetNadir(pShip);
+
 	Physics_GetVelocity(pShip->mpPhysics, &v);
 
 	//smooth accumulated accel
@@ -106,42 +145,14 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 		pShip->mUIAccel, pShip->mFuel,
 		pShip->mO2, pShip->mCargo, pShip->mCargoMax, pShip->mHull,
 		pShip->mHullMax, 1, 1,
-		(int)D3DXToDegree(pShip->mAttitude.y),
-		(int)D3DXToDegree(pShip->mAttitude.x), 0, 0,
+		(int)D3DXToDegree(heading),
+		(int)D3DXToDegree(nadir), 0, 0,
 		pShip->mHeat, pShip->mRadiatorsExtendPercent);
 
 	pShip->mNumUpdates	=0;
 	pShip->mTotalDT		=0.0f;
 	pShip->mUIAccel		=0.0f;
 	pShip->mLastV		=v;
-}
-
-
-//adapted this from CGLM
-//I use it with linux / vulkan alot
-//No idea how it works!
-static void	RotateVec(const D3DXQUATERNION *pQ, const D3DXVECTOR3 *pV,
-						D3DXVECTOR3 *pDest)
-{
-	D3DXQUATERNION	qn;
-	D3DXVECTOR3		forward, v1, v2;
-
-	//normalize into qn
-	D3DXQuaternionNormalize(&qn, pQ);
-
-	//CGLM calls this the imaginary part
-	forward.x	=qn.x;
-	forward.y	=qn.y;
-	forward.z	=qn.z;
-
-	D3DXVec3Scale(&v1, &forward, 2.0f * D3DXVec3Dot(&forward, pV));
-	D3DXVec3Scale(&v2, pV, qn.w * qn.w - D3DXVec3Dot(&forward, &forward));
-	D3DXVec3Add(&v1, &v1, &v2);
-
-	D3DXVec3Cross(&v2, &forward, pV);
-	D3DXVec3Scale(&v2, &v2, 2.0f * qn.w);
-
-	D3DXVec3Add(pDest, &v1, &v2);
 }
 
 
@@ -156,7 +167,7 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
 	RotateVec(&pShip->mRot, &side, &side);
 
 	D3DXQuaternionRotationAxis(&rotX, &side, deltaPitch);
-	D3DXQuaternionRotationAxis(&rotY, &up, deltaYaw);
+	D3DXQuaternionRotationAxis(&rotY, &up, -deltaYaw);		//NOTE NEGATION!
 
 	D3DXQuaternionMultiply(&accum, &rotX, &rotY);
 	D3DXQuaternionMultiply(&pShip->mRot, &pShip->mRot, &accum);
