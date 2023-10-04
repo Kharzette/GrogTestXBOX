@@ -266,6 +266,12 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\DroneCam.c">
+		</File>
+		<File
+			RelativePath=".\DroneCam.h">
+		</File>
+		<File
 			RelativePath=".\PilotUI.c">
 		</File>
 		<File

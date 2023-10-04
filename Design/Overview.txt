@@ -139,6 +139,7 @@ Interface
 		Start New Game
 		Continue
 		Settings
+			Invert Y axis for Dach
 		Quit
 	Piloting
 		Regional indicator
@@ -149,6 +150,7 @@ Interface
 		Passenger indicator?
 		Nav / Waypoint stuff?
 		Heat & deltas
+		Power consumption
 	On-Foot
 		Weapon / Ammo stuff
 		Air if in vacuum / suited

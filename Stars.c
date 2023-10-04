@@ -55,12 +55,20 @@ Stars	*Stars_Generate(GraphicsDevice *pGD)
 }
 
 
-void	Stars_Draw(Stars *pStars, GraphicsDevice *pGD)
+void	Stars_Draw(Stars *pStars, GraphicsDevice *pGD,
+			D3DXMATRIX *pView, D3DXMATRIX *pProj)
 {
 	D3DXVECTOR4	starColour	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXMATRIX	viewT, projT;
+
+	D3DXMatrixTranspose(&viewT, pView);
+	D3DXMatrixTranspose(&projT, pProj);
 
 	GD_SetVertexShader(pGD, pStars->mVSHandle);
 	GD_SetPixelShader(pGD, pStars->mPSHandle);
+	
+	GD_SetVShaderConstant(pGD, 0, &viewT, 4);
+	GD_SetVShaderConstant(pGD, 4, &projT, 4);
 
 	//set star colour
 	GD_SetPShaderConstant(pGD, 0, &starColour, 1);		//star color

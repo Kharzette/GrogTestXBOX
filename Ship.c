@@ -65,19 +65,20 @@ Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
 }
 
 
+const D3DXMATRIX	*Ship_GetWorldMatrix(Ship *pShip)
+{
+	return	&pShip->mMat;
+}
+
+
 //deltaTime in seconds
 void	Ship_Update(Ship *pShip, float dt)
 {
 	D3DXVECTOR3		side	={	1.0f, 0.0f, 0.0f	};
 	D3DXVECTOR3		up		={	0.0f, 1.0f, 0.0f	};
 	D3DXVECTOR3		forward	={	0.0f, 0.0f, 1.0f	};
-//	D3DXQUATERNION	orient;
 
 	Physics_Update(pShip->mpPhysics, dt);
-
-//	Physics_GetOrient(pShip->mpPhysics, &orient);
-
-//	D3DXMatrixRotationQuaternion(&pShip->mMat, &orient);
 
 	D3DXVec3TransformNormal(&pShip->mForward, &forward, &pShip->mMat);
 	D3DXVec3TransformNormal(&pShip->mUp, &up, &pShip->mMat);
@@ -122,14 +123,6 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 
 void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
 {
-//	D3DXVECTOR3	side	={	1.0f, 0.0f, 0.0f	};
-//	D3DXVECTOR3	up		={	0.0f, 1.0f, 0.0f	};
-//	D3DXVECTOR3	forward	={	0.0f, 0.0f, 1.0f	};
-	
-//	D3DXVec3Scale(&side, &side, deltaPitch);
-//	D3DXVec3Scale(&up, &up, deltaYaw);
-//	D3DXVec3Scale(&forward, &forward, deltaRoll);
-
     pShip->mAttitude.x    +=deltaPitch;
     pShip->mAttitude.y    +=deltaYaw;
     pShip->mAttitude.z    +=deltaRoll;
@@ -139,9 +132,6 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
     pShip->mAttitude.z    =WrapAngleRadians(pShip->mAttitude.z);
 
     D3DXMatrixRotationYawPitchRoll(&pShip->mMat, pShip->mAttitude.y, pShip->mAttitude.x, pShip->mAttitude.z);
-//	Physics_ApplyTorque(pShip->mpPhysics, &side);
-//	Physics_ApplyTorque(pShip->mpPhysics, &up);
-//	Physics_ApplyTorque(pShip->mpPhysics, &forward);
 }
 
 
@@ -161,12 +151,18 @@ void	Ship_Throttle(Ship *pShip, BYTE throttle)
 }
 
 
-void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD)
+void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
+			D3DXMATRIX *pView, D3DXMATRIX *pProj)
 {
-	D3DXMATRIX	wtrans;
+	D3DXMATRIX	wvp, wtrans;
+
+	D3DXMatrixMultiply(&wvp, &pShip->mMat, pView);
+	D3DXMatrixMultiply(&wvp, &wvp, pProj);
 
 	D3DXMatrixTranspose(&wtrans, &pShip->mMat);
+	D3DXMatrixTranspose(&wvp, &wvp);
 
+	GD_SetVShaderConstant(pGD, 0, &wvp, 4);
 	GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//ship world matrix
 
 	Mesh_Draw(pShip->mpMesh, pGD);

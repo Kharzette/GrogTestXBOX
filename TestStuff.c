@@ -8,6 +8,7 @@
 #include	"UI.h"
 #include	"PilotUI.h"
 #include	"Ship.h"
+#include	"DroneCam.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
@@ -31,34 +32,6 @@
 #define	MAX_BONES			55
 
 
-static void SpinMatYawPitch(float dt, D3DXMATRIX *outWorld)
-{
-	static	float	cubeYaw		=0.0f;
-	static	float	cubePitch	=0.0f;
-
-	cubeYaw		+=ROT_RATE * dt;
-	cubePitch	+=0.25f * ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=WrapAngleDegrees(cubeYaw);
-	cubePitch	=WrapAngleDegrees(cubePitch);
-
-	D3DXMatrixRotationYawPitchRoll(outWorld, cubeYaw, cubePitch, 0.0f);
-}
-
-static void SpinMatYaw(float dt, D3DXMATRIX *outWorld)
-{
-	static	float	cubeYaw		=0.0f;
-
-	cubeYaw	+=ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=WrapAngleDegrees(cubeYaw);
-
-	D3DXMatrixRotationY(outWorld, cubeYaw);
-}
-
-
 int main(void)
 {
 	GraphicsDevice	*pGD;
@@ -79,12 +52,13 @@ int main(void)
 	Font			*pUIFont;
 	Ship			*pShuttle;
 	int				frameCount	=0;
+	DroneCam		*pDroneCam	=DroneCam_Init();
 
 	LPDIRECT3DTEXTURE8	pUITex, pTestTex	=NULL;
 
 	//shader shtuff
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR4	solidColor0	={	1.0f, 0.1f, 0.1f, 1.0f	};
+	D3DXVECTOR4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	D3DXVECTOR4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
 	D3DXVECTOR4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
 	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
@@ -167,11 +141,15 @@ int main(void)
 			XBC_UpdateInput(pXBC);
 			//XBC_PrintInput(pXBC);
 
+			XBC_GetAnalogLeft(pXBC, &leftX, &leftY);
 			XBC_GetAnalogRight(pXBC, &rightX, &rightY);
 			XBC_GetRightTrigger(pXBC, &throttle);
 
 			Ship_Turn(pShuttle, rightY * dt * ANALOG_SCALE,
 				rightX * dt * ANALOG_SCALE, 0.0f);
+
+			DroneCam_Rotate(pDroneCam, leftY * dt * ANALOG_SCALE,
+				leftX * dt * ANALOG_SCALE, 0.0f);
 
 			Ship_Throttle(pShuttle, throttle);
 
@@ -189,10 +167,9 @@ int main(void)
 		
 		//update character bones
 
-		SpinMatYawPitch(renderDT, &world);
 
 		frameCount++;
-		if(frameCount >=10)
+		if(frameCount >=10)	//update UI every 10 frames
 		{
 			frameCount	-=10;
 			Ship_UpdateUI(pShuttle, pUI, pGD);
@@ -203,19 +180,12 @@ int main(void)
 
 		GD_BeginScene(pGD);
 
-		//set star shader variables
-		{
-			D3DXMATRIX	vtrans, ptrans;
+		DroneCam_GetCameraMatrix(pDroneCam, &view);
 
-			D3DXMatrixTranspose(&vtrans, &view);
-			D3DXMatrixTranspose(&ptrans, &proj);
-
-			GD_SetVShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
-			GD_SetVShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
-		}
+//		D3DXMatrixMultiply(&view, Ship_GetWorldMatrix(pShuttle), &view);
 
 		//draw stars
-		Stars_Draw(pStars, pGD);
+		Stars_Draw(pStars, pGD, &view, &proj);
 
 		//set vbuffer stuff up
 		GD_SetVertexShader(pGD, vsHandle);
@@ -229,30 +199,7 @@ int main(void)
 		GD_SetVShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
 		GD_SetVShaderConstant(pGD, 18, &specColor, 1);		//spec color
 
-		//set shader variables
-		{
-			D3DXMATRIX	wtrans, vtrans, ptrans;
-
-			D3DXMatrixTranspose(&wtrans, &world);
-			D3DXMatrixTranspose(&vtrans, &view);
-			D3DXMatrixTranspose(&ptrans, &proj);
-
-			GD_SetVShaderConstant(pGD, 0, &vtrans, 4);	//view matrix
-			GD_SetVShaderConstant(pGD, 4, &ptrans, 4);	//proj matrix
-			GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//world matrix
-		}
-
-		//camera update
-
-		//bones
-
-		//draw gimpy cube
-		GD_SetStreamSource(pGD, 0, pCube->mpVB, pCube->mStride);
-		GD_SetIndices(pGD, pCube->mpIB, 0);		
-		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST,
-							0, pCube->mIndexCount / 3);
-
-		Ship_Draw(pShuttle, pGD);
+		Ship_Draw(pShuttle, pGD, &view, &proj);
 
 		//draw ui stuff
 		UI_Draw(pUI, pGD);
