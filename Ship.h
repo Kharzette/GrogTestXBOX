@@ -1,4 +1,5 @@
 #pragma once
+#include	<XTL.h>
 
 typedef struct	Ship_t				Ship;
 typedef struct	Mesh_t				Mesh;
@@ -16,4 +17,4 @@ void	Ship_Throttle(Ship *pShip, BYTE throttle);
 void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 				D3DXMATRIX *pView, D3DXMATRIX *pProj);
 
-const D3DXMATRIX	*Ship_GetWorldMatrix(Ship *pShip);
+const D3DXVECTOR3	*Ship_GetAttitude(Ship *pShip);

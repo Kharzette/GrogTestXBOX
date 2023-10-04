@@ -16,9 +16,8 @@ typedef struct	Ship_t
 	int	mSectorX, mSectorY, mSectorZ;
 
 	//orientation
-	D3DXMATRIX	mMat;
-	D3DXVECTOR3	mForward, mUp;
-	D3DXVECTOR3	mAttitude;	//lazy gamey turning
+	D3DXVECTOR3		mAttitude;	//lazy gamey turning
+	D3DXQUATERNION	mRot;
 
 	//movement
 	D3DXVECTOR3	mLastV;			//track velocity over update time for accel calc
@@ -47,8 +46,6 @@ Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
 
 	pRet->mpPhysics	=Physics_Init();
 
-	pRet->mUp.y	=pRet->mForward.z	=1.0f;
-
 	pRet->mpMesh	=pMesh;
 	pRet->mFuel		=pRet->mFuelMax		=fuelMax;
 	pRet->mO2		=pRet->mO2Max		=o2Max;
@@ -59,15 +56,17 @@ Ship	*Ship_Init(Mesh *pMesh, int maxThrust, int fuelMax, int o2Max,
 
 	pRet->mMaxThrust	=maxThrust;
 
+	D3DXQuaternionIdentity(&pRet->mRot);
+
 	Physics_SetProps(pRet->mpPhysics, mass, it, SOLAR_WIND_DRAG);
 
 	return	pRet;
 }
 
 
-const D3DXMATRIX	*Ship_GetWorldMatrix(Ship *pShip)
+const D3DXVECTOR3	*Ship_GetAttitude(Ship *pShip)
 {
-	return	&pShip->mMat;
+	return	&pShip->mAttitude;
 }
 
 
@@ -79,9 +78,6 @@ void	Ship_Update(Ship *pShip, float dt)
 	D3DXVECTOR3		forward	={	0.0f, 0.0f, 1.0f	};
 
 	Physics_Update(pShip->mpPhysics, dt);
-
-	D3DXVec3TransformNormal(&pShip->mForward, &forward, &pShip->mMat);
-	D3DXVec3TransformNormal(&pShip->mUp, &up, &pShip->mMat);
 
 	pShip->mTotalDT	+=dt;
 }
@@ -121,30 +117,64 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 }
 
 
-void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
+//adapted this from CGLM
+//I use it with linux / vulkan alot
+//No idea how it works!
+static void	RotateVec(const D3DXQUATERNION *pQ, const D3DXVECTOR3 *pV,
+						D3DXVECTOR3 *pDest)
 {
-    pShip->mAttitude.x    +=deltaPitch;
-    pShip->mAttitude.y    +=deltaYaw;
-    pShip->mAttitude.z    +=deltaRoll;
+	D3DXQUATERNION	qn;
+	D3DXVECTOR3		forward, v1, v2;
 
-    pShip->mAttitude.x    =WrapAngleRadians(pShip->mAttitude.x);
-    pShip->mAttitude.y    =WrapAngleRadians(pShip->mAttitude.y);
-    pShip->mAttitude.z    =WrapAngleRadians(pShip->mAttitude.z);
+	//normalize into qn
+	D3DXQuaternionNormalize(&qn, pQ);
 
-    D3DXMatrixRotationYawPitchRoll(&pShip->mMat, pShip->mAttitude.y, pShip->mAttitude.x, pShip->mAttitude.z);
+	//CGLM calls this the imaginary part
+	forward.x	=qn.x;
+	forward.y	=qn.y;
+	forward.z	=qn.z;
+
+	D3DXVec3Scale(&v1, &forward, 2.0f * D3DXVec3Dot(&forward, pV));
+	D3DXVec3Scale(&v2, pV, qn.w * qn.w - D3DXVec3Dot(&forward, &forward));
+	D3DXVec3Add(&v1, &v1, &v2);
+
+	D3DXVec3Cross(&v2, &forward, pV);
+	D3DXVec3Scale(&v2, &v2, 2.0f * qn.w);
+
+	D3DXVec3Add(pDest, &v1, &v2);
+}
+
+
+void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
+{	
+	D3DXQUATERNION	accum, rotX, rotY;//, rotZ;
+	D3DXVECTOR3		up		={	0.0f, 1.0f, 0.0f	};
+	D3DXVECTOR3		side	={	1.0f, 0.0f, 0.0f	};
+
+	//rotate basis vectors into quat space
+	RotateVec(&pShip->mRot, &up, &up);
+	RotateVec(&pShip->mRot, &side, &side);
+
+	D3DXQuaternionRotationAxis(&rotX, &side, deltaPitch);
+	D3DXQuaternionRotationAxis(&rotY, &up, deltaYaw);
+
+	D3DXQuaternionMultiply(&accum, &rotX, &rotY);
+	D3DXQuaternionMultiply(&pShip->mRot, &pShip->mRot, &accum);
+
+	D3DXQuaternionNormalize(&pShip->mRot, &pShip->mRot);
 }
 
 
 void	Ship_Throttle(Ship *pShip, BYTE throttle)
 {
-	D3DXVECTOR3	force;
+	D3DXVECTOR3	force	={	pShip->mRot.x, pShip->mRot.y, pShip->mRot.z	};
 
 	if(!throttle)
 	{
 		return;
 	}
 
-	D3DXVec3Scale(&force, &pShip->mForward,
+	D3DXVec3Scale(&force, &force,
 		(throttle / 255.0f) * pShip->mMaxThrust);
 
 	Physics_ApplyForce(pShip->mpPhysics, &force);
@@ -154,12 +184,14 @@ void	Ship_Throttle(Ship *pShip, BYTE throttle)
 void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 			D3DXMATRIX *pView, D3DXMATRIX *pProj)
 {
-	D3DXMATRIX	wvp, wtrans;
+	D3DXMATRIX	wvp, wtrans, w;
 
-	D3DXMatrixMultiply(&wvp, &pShip->mMat, pView);
+	D3DXMatrixRotationQuaternion(&w, &pShip->mRot);
+
+	D3DXMatrixMultiply(&wvp, &w, pView);
 	D3DXMatrixMultiply(&wvp, &wvp, pProj);
 
-	D3DXMatrixTranspose(&wtrans, &pShip->mMat);
+	D3DXMatrixTranspose(&wtrans, &w);
 	D3DXMatrixTranspose(&wvp, &wvp);
 
 	GD_SetVShaderConstant(pGD, 0, &wvp, 4);
