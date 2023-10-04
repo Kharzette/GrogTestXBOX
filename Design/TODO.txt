@@ -1,7 +1,7 @@
 	Load all shaders and just switch with an offset
 x	Get text drawing
 x	Stop all the memory thrash of text
-	Think about camera for ship travel stuff
+x	Think about camera for ship travel stuff
 x	Figure out a way to do UI
 x		Get basic Piloting UI working
 	Rumble with engine throttle

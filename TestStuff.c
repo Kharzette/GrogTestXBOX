@@ -175,14 +175,13 @@ int main(void)
 			Ship_UpdateUI(pShuttle, pUI, pGD);
 		}
 
+		DroneCam_GetCameraMatrix(pDroneCam,
+			Ship_GetRotation(pShuttle), &view);
+
 		//clear
 		GD_Clear(pGD, clear);
 
 		GD_BeginScene(pGD);
-
-		DroneCam_GetCameraMatrix(pDroneCam, &view);
-
-//		D3DXMatrixMultiply(&view, Ship_GetWorldMatrix(pShuttle), &view);
 
 		//draw stars
 		Stars_Draw(pStars, pGD, &view, &proj);

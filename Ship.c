@@ -109,10 +109,6 @@ const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip)
 //deltaTime in seconds
 void	Ship_Update(Ship *pShip, float dt)
 {
-	D3DXVECTOR3		side	={	1.0f, 0.0f, 0.0f	};
-	D3DXVECTOR3		up		={	0.0f, 1.0f, 0.0f	};
-	D3DXVECTOR3		forward	={	0.0f, 0.0f, 1.0f	};
-
 	Physics_Update(pShip->mpPhysics, dt);
 
 	pShip->mTotalDT	+=dt;
