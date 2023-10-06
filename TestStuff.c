@@ -9,6 +9,8 @@
 #include	"PilotUI.h"
 #include	"Ship.h"
 #include	"DroneCam.h"
+#include	"BigAssPrim.h"
+#include	"SolarMat.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
@@ -23,10 +25,9 @@
 #define	RESY			480
 #define	ROT_RATE		1.0f
 #define	UVSCALE_RATE	1.0f
-#define	FARCLIP			1000.0f
-#define	NEARCLIP		0.1f
 #define	ANALOG_SCALE	0.0001f
 #define	UI_ARRAY_SIZE	20
+#define	UI_UPDATE_TIME	1.0f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -37,76 +38,43 @@ int main(void)
 	GraphicsDevice	*pGD;
 	BOOL			bRunning	=TRUE;
 	UpdateTimer		*pUT		=UpdateTimer_Create(TRUE, FALSE);
-	float			aspect	=(float)RESX / (float)RESY;
-	D3DXMATRIX		world, view, proj;
-	D3DXVECTOR3		eyePos	={ 0.0f, 0.6f, 12.5f };
-	D3DXVECTOR3		targPos	={ 0.0f, 0.75f, 0.0f };
-	D3DXVECTOR3		upVec	={ 0.0f, 1.0f, 0.0f };
-	PrimObject		*pCube;
-	DWORD			vsHandle, psHandle, vertDecl[5];
-	Mesh			*pShuttleMesh;
-	XBC				*pXBC;
-	D3DXVECTOR2		shuttleAttitude	={	0.0f, 0.0f	};
-	Stars			*pStars;
-	UI				*pUI;
-	Font			*pUIFont;
-	Ship			*pShuttle;
-	int				frameCount	=0;
 	DroneCam		*pDroneCam	=DroneCam_Init();
+
+	float		guiTime, aspect	=(float)RESX / (float)RESY;
+	D3DXVECTOR2	shuttleAttitude	={	0.0f, 0.0f	};
+
+	Mesh		*pShuttleMesh;
+	XBC			*pXBC;
+	Stars		*pStars;
+	UI			*pUI;
+	Font		*pUIFont;
+	Ship		*pShuttle;
+	BigAssPrim	*pBAP;
+	SolarMat	*pSM;
 
 	LPDIRECT3DTEXTURE8	pUITex, pTestTex	=NULL;
 
-	//shader shtuff
-	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
-	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR3	light1		={	0.2f, 0.3f, 0.3f	};
-	D3DXVECTOR3	light2		={	0.1f, 0.2f, 0.2f	};
-	D3DXVECTOR3	lightDir	={	0.3f, -0.7f, -0.5f	};
-
-	D3DXMatrixIdentity(&world);
 
 //	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 16.6666f);	//60hz
 
-	GD_Init(&pGD, RESX, RESY);
-
-	pCube	=PF_CreateCube(0.5f, pGD);
-
-	D3DXMatrixPerspectiveFovRH(&proj, D3DX_PI / 4.0f, aspect, NEARCLIP, FARCLIP);
-
-	D3DXMatrixLookAtRH(&view, &eyePos, &targPos, &upVec);
-
-	D3DXMatrixIdentity(&world);
-
-
-	//vertex declaration, sorta like input layouts on 11
-	vertDecl[0]	=D3DVSD_STREAM(0);
-	vertDecl[1]	=D3DVSD_REG(0, D3DVSDT_FLOAT3);
-	vertDecl[2]	=D3DVSD_REG(1, D3DVSDT_FLOAT3);
-	vertDecl[3]	=D3DVSD_REG(2, D3DVSDT_FLOAT2);
-	vertDecl[4]	=D3DVSD_END();
-
-	vsHandle	=LoadCompiledVShader(pGD, vertDecl, "D:\\Media\\ShaderLib\\Static.xvu");
-	psHandle	=LoadCompiledPShader(pGD, "D:\\Media\\ShaderLib\\Static.xpu");
+	GD_Init(&pGD, RESX, RESY, TRUE);
 
 //	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\RainbowVomit.png");
 //	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Rainbow.png");
 
+	//3d appearance stuff
 	pShuttleMesh	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
+	pSM				=SolarMat_Init(pGD, aspect);
+	pXBC			=XBC_Init();
+	pStars			=Stars_Generate(pGD);
+	pBAP			=BAP_Init(pGD);
 
-	pXBC	=XBC_Init();
 
-	pStars	=Stars_Generate(pGD);
-
-	pUIFont	=Font_CreateCCP("D:\\Media\\Fonts\\Bahnschrift40.dat");
-
+	//UI stuff
 	GD_CreateTextureFromFile(pGD, &pUITex, "D:\\Media\\Fonts\\Bahnschrift40.png");
-
-	pUI	=UI_Init(pGD, UI_ARRAY_SIZE);
-
+	pUIFont	=Font_CreateCCP("D:\\Media\\Fonts\\Bahnschrift40.dat");
+	pUI		=UI_Init(pGD, UI_ARRAY_SIZE);
 	PUI_Init(pUI, pGD, pUIFont, pUITex);
 
 	//wild guesses on these numbers
@@ -118,6 +86,7 @@ int main(void)
 		120,		//hull max
 		10000000);	//mass in grams
 
+	guiTime	=0.0f;
 	while(bRunning)
 	{
 		//space color
@@ -143,6 +112,7 @@ int main(void)
 			XBC_GetAnalogRight(pXBC, &rightX, &rightY);
 			XBC_GetRightTrigger(pXBC, &throttle);
 
+			//gigaslow
 			Ship_Turn(pShuttle, rightY * dt * ANALOG_SCALE,
 				rightX * dt * ANALOG_SCALE, 0.0f);
 
@@ -151,6 +121,7 @@ int main(void)
 
 			Ship_Throttle(pShuttle, throttle);
 
+			//megaslow
 			Ship_Update(pShuttle, dt);
 
 			UpdateTimer_UpdateDone(pUT);
@@ -160,47 +131,41 @@ int main(void)
 		renderDT	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
 		animTime	+=renderDT;
+		guiTime		+=renderDT;
 
 		//animate characters
 		
 		//update character bones
 
-
-		frameCount++;
-		if(frameCount >=10)	//update UI every 10 frames
+		if(guiTime >= UI_UPDATE_TIME)
 		{
-			frameCount	-=10;
+			guiTime	=0.0f;
 			Ship_UpdateUI(pShuttle, pUI, pGD);
 		}
-
-		DroneCam_GetCameraMatrix(pDroneCam,
-			Ship_GetRotation(pShuttle), &view);
 
 		//clear
 		GD_Clear(pGD, clear);
 
 		GD_BeginScene(pGD);
+		{
+			D3DXMATRIX	view;
+			D3DXVECTOR3	eyePos;
 
-		//draw stars
-		Stars_Draw(pStars, pGD, &view, &proj);
+			DroneCam_GetCameraMatrix(pDroneCam,
+				Ship_GetRotation(pShuttle), &view, &eyePos);
 
-		//set vbuffer stuff up
-		GD_SetVertexShader(pGD, vsHandle);
-		GD_SetPixelShader(pGD, psHandle);
+			//draw stars
+			Stars_Draw(pStars, pGD, &view, SolarMat_GetProj(pSM));
 
-		GD_SetVShaderConstant(pGD, 12, &eyePos, 1);			//eye position
-		GD_SetVShaderConstant(pGD, 13, &light0, 1);			//trilight0
-		GD_SetVShaderConstant(pGD, 14, &light1, 1);			//trilight1
-		GD_SetVShaderConstant(pGD, 15, &light2, 1);			//trilight2
-		GD_SetVShaderConstant(pGD, 16, &lightDir, 1);		//light dir + spec pow
-		GD_SetVShaderConstant(pGD, 17, &solidColor0, 1);	//mat color
-		GD_SetVShaderConstant(pGD, 18, &specColor, 1);		//spec color
+			SolarMat_SetShaderVars(pSM, pGD);
 
-		Ship_Draw(pShuttle, pGD, &view, &proj);
+			Ship_Draw(pShuttle, pGD, &eyePos, &view, SolarMat_GetProj(pSM));
 
-		//draw ui stuff
-		UI_Draw(pUI, pGD);
+			BAP_Draw(pBAP, pGD);
 
+			//draw ui stuff
+			UI_Draw(pUI, pGD);
+		}
 		GD_EndScene(pGD);
 
 		GD_Present(pGD);

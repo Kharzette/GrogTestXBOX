@@ -55,8 +55,8 @@ Stars	*Stars_Generate(GraphicsDevice *pGD)
 }
 
 
-void	Stars_Draw(Stars *pStars, GraphicsDevice *pGD,
-			D3DXMATRIX *pView, D3DXMATRIX *pProj)
+void	Stars_Draw(const Stars *pStars, GraphicsDevice *pGD,
+			const D3DXMATRIX *pView, const D3DXMATRIX *pProj)
 {
 	D3DXVECTOR4	starColour	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	D3DXMATRIX	viewT, projT;

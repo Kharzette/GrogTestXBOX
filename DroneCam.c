@@ -20,7 +20,7 @@ DroneCam	*DroneCam_Init(void)
 	//defaults
 	pRet->mMinDist		=5.0f;
 	pRet->mMaxDist		=25.0f;
-	pRet->mCurDistance	=10.0f;
+	pRet->mCurDistance	=20.0f;
 
 	D3DXQuaternionIdentity(&pRet->mView);
 
@@ -34,7 +34,8 @@ static void	RotationQuat(const D3DXVECTOR3 *pPYR, D3DXQUATERNION *pOut)
 }
 
 void	DroneCam_GetCameraMatrix(const DroneCam *pDC,
-			const D3DXQUATERNION *pAttachedRot, D3DXMATRIX *pMat)
+			const D3DXQUATERNION *pAttachedRot,
+			D3DXMATRIX *pMat, D3DXVECTOR3 *pEyePos)
 {
 	D3DXVECTOR3		translation	={	0.0f, 0.0f, 1.0f	};
 	D3DXQUATERNION	combined;
@@ -52,6 +53,9 @@ void	DroneCam_GetCameraMatrix(const DroneCam *pDC,
 
 	//invert for camera matrix
 	D3DXMatrixInverse(pMat, NULL, pMat);
+
+	//position of the viewer
+	*pEyePos	=translation;
 }
 
 

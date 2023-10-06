@@ -15,7 +15,9 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll);
 void	Ship_Throttle(Ship *pShip, BYTE throttle);
 
 void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
-				D3DXMATRIX *pView, D3DXMATRIX *pProj);
+			const D3DXVECTOR3 *pEyePos,
+			const D3DXMATRIX *pView,
+			const D3DXMATRIX *pProj);
 
 float	Ship_GetHeading(const Ship *pShip);
 float	Ship_GetNadir(const Ship *pShip);

@@ -10,7 +10,10 @@
 
 typedef struct	Ship_t
 {
+	//appearance stuff
 	Mesh		*mpMesh;
+	D3DXVECTOR4	mMatColour;
+
 	Physics		*mpPhysics;
 
 	//big position
@@ -25,13 +28,13 @@ typedef struct	Ship_t
 	float		mTotalDT;		//time smoothed for UI updates
 	int			mNumUpdates;	//num physics update per render
 
+	//statistics
 	INT64	mFuel, mFuelMax;	//in grams
 	INT64	mCargo, mCargoMax;	//in grams
 	INT64	mMaxThrust;			//max output from main engines
 	INT64	mMass;				//track here to update phys + weight of fuel and cargo etc
 	int		mHull, mHullMax;
-	int		mO2, mO2Max;
-	
+	int		mO2, mO2Max;	
 	float	mHeat;
 	float	mRadiatorsExtendPercent;
 }	Ship;
@@ -46,7 +49,12 @@ Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust, INT64 fuelMax, int o2Max,
 
 	pRet->mpPhysics	=Physics_Init();
 
+	//default white
+	pRet->mMatColour.x	=pRet->mMatColour.y
+		=pRet->mMatColour.z	=pRet->mMatColour.w	=1.0f;
+
 	pRet->mpMesh	=pMesh;
+
 	pRet->mFuel		=pRet->mFuelMax		=fuelMax;
 	pRet->mO2		=pRet->mO2Max		=o2Max;
 	pRet->mHull		=pRet->mHullMax		=hullMax;
@@ -216,6 +224,11 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
 	D3DXVECTOR3		up		={	0.0f, 1.0f, 0.0f	};
 	D3DXVECTOR3		side	={	1.0f, 0.0f, 0.0f	};
 
+	if(deltaPitch == 0.0f && deltaYaw == 0.0f && deltaRoll == 0.0f)
+	{
+		return;
+	}
+
 	//rotate basis vectors into quat space
 	RotateVec(&pShip->mRot, &up, &up);
 	RotateVec(&pShip->mRot, &side, &side);
@@ -250,7 +263,9 @@ void	Ship_Throttle(Ship *pShip, BYTE throttle)
 
 
 void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
-			D3DXMATRIX *pView, D3DXMATRIX *pProj)
+			const D3DXVECTOR3 *pEyePos,
+			const D3DXMATRIX *pView,
+			const D3DXMATRIX *pProj)
 {
 	D3DXMATRIX	wvp, wtrans, w;
 
@@ -263,7 +278,9 @@ void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 	D3DXMatrixTranspose(&wvp, &wvp);
 
 	GD_SetVShaderConstant(pGD, 0, &wvp, 4);
-	GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//ship world matrix
+	GD_SetVShaderConstant(pGD, 8, &wtrans, 4);				//ship world matrix
+	GD_SetVShaderConstant(pGD, 12, pEyePos, 1);				//eye position
+	GD_SetVShaderConstant(pGD, 17, &pShip->mMatColour, 1);	//mat color
 
 	Mesh_Draw(pShip->mpMesh, pGD);
 }

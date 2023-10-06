@@ -266,6 +266,12 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\BigAssPrim.c">
+		</File>
+		<File
+			RelativePath=".\BigAssPrim.h">
+		</File>
+		<File
 			RelativePath=".\DroneCam.c">
 		</File>
 		<File
@@ -282,6 +288,12 @@
 		</File>
 		<File
 			RelativePath=".\Ship.h">
+		</File>
+		<File
+			RelativePath=".\SolarMat.c">
+		</File>
+		<File
+			RelativePath=".\SolarMat.h">
 		</File>
 		<File
 			RelativePath=".\Stars.c">
