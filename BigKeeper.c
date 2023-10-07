@@ -10,17 +10,14 @@
 
 typedef struct	BigAssPrim_t
 {
-	PrimObject	*mpPO;
-
-	D3DXMATRIX	mPlanetMats[21];
-
-	//cubemaps for texturing
-	IDirect3DCubeTexture8	*mpCubes[21];
-
 	//material colour
 	D3DXVECTOR4	mMatColour;
 
-	DWORD	mVSHandle, mPSHandle;
+	//size in megameters
+	float	mScale;
+
+
+
 }	BigAssPrim;
 
 
