@@ -19,8 +19,8 @@ DroneCam	*DroneCam_Init(void)
 
 	//defaults
 	pRet->mMinDist		=5.0f;
-	pRet->mMaxDist		=25.0f;
-	pRet->mCurDistance	=20.0f;
+	pRet->mMaxDist		=45.0f;
+	pRet->mCurDistance	=40.0f;
 
 	D3DXQuaternionIdentity(&pRet->mView);
 

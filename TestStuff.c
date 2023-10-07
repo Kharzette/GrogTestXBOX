@@ -52,7 +52,7 @@ int main(void)
 	BigAssPrim	*pBAP;
 	SolarMat	*pSM;
 
-	LPDIRECT3DTEXTURE8	pUITex, pTestTex	=NULL;
+	LPDIRECT3DTEXTURE8		pUITex, pTestTex	=NULL;
 
 
 //	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
@@ -161,7 +161,9 @@ int main(void)
 
 			Ship_Draw(pShuttle, pGD, &eyePos, &view, SolarMat_GetProj(pSM));
 
-			BAP_Draw(pBAP, pGD);
+			BAP_Draw(pBAP, pGD,
+				SolarMat_GetLightDir(pSM),
+				&view, SolarMat_GetProj(pSM));
 
 			//draw ui stuff
 			UI_Draw(pUI, pGD);

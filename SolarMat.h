@@ -10,3 +10,4 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect);
 void	SolarMat_SetShaderVars(const SolarMat *pSM, GraphicsDevice *pGD);
 
 const D3DMATRIX	*SolarMat_GetProj(const SolarMat *pSM);
+const D3DVECTOR4	*SolarMat_GetLightDir(const SolarMat *pSM);

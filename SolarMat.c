@@ -15,7 +15,7 @@ typedef struct	SolarMat_t
 	D3DXVECTOR3	mLight2;
 
 	//this will always point to the sun
-	D3DXVECTOR3	mLightDir;
+	D3DXVECTOR4	mLightDir;
 
 	D3DMATRIX	mProj;
 
@@ -34,7 +34,7 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
 	D3DXVECTOR3	light1		={	0.2f, 0.3f, 0.3f	};
 	D3DXVECTOR3	light2		={	0.1f, 0.2f, 0.2f	};
-	D3DXVECTOR3	lightDir	={	0.3f, 0.0f, -0.85f	};
+	D3DXVECTOR3	lightDir	={	0.2f, 0.1f, -0.85f	};
 
 	DWORD		vertDecl[5];
 
@@ -50,7 +50,12 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 	pRet->mLight1		=light1;
 	pRet->mLight2		=light2;
 
-	D3DXVec3Normalize(&pRet->mLightDir, &lightDir);
+	D3DXVec3Normalize(&lightDir, &lightDir);
+
+	pRet->mLightDir.x	=lightDir.x;
+	pRet->mLightDir.y	=lightDir.y;
+	pRet->mLightDir.z	=lightDir.z;
+	pRet->mLightDir.x	=5;	//specular power?
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);
@@ -69,6 +74,12 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 const D3DMATRIX	*SolarMat_GetProj(const SolarMat *pSM)
 {
 	return	&pSM->mProj;
+}
+
+
+const D3DVECTOR4	*SolarMat_GetLightDir(const SolarMat *pSM)
+{
+	return	&pSM->mLightDir;
 }
 
 

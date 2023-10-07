@@ -3,7 +3,7 @@
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
 
-#define	STAR_SPHERE_SIZE	100.0f
+#define	STAR_SPHERE_SIZE	959.0f
 #define	NUM_STARS			5000
 
 
