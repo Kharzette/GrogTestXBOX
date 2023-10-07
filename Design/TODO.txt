@@ -1,21 +1,13 @@
+	Waypoints, cycle through with Y or something?
 	Load all shaders and just switch with an offset
-x	Get text drawing
-x	Stop all the memory thrash of text
-x	Think about camera for ship travel stuff
-x	Figure out a way to do UI
-x		Get basic Piloting UI working
+	Fix goofy resolution / aspect
 	Rumble with engine throttle
-	Think about relative velocities
-		Velocity relative to nearest point of interest?
-		Maybe have outer stuff fixed in place for now?
 	Sun/planets/roids
-x		Textured spheres good enough?
-x		20ish gas giant textures
 		20ish rocky planet textures
 		10ish asteroid textures
 		10ish moon textures
 	Make some other ships
-		Slow, old, beat up starter shuttle
+		Slow, old, leaky, beat up starter shuttle
 		Freighters
 		Frigates
 		Fighters
@@ -26,7 +18,17 @@ x		20ish gas giant textures
 		Multiring stations
 		Asteroid orbitals
 		Military stations	
-x	Figure out how to do huge distances
 	Physics numbers are big
 		Maybe use fractional tons for mass?
-	Waypoints, cycle through with Y or something?
+
+Done
+x	Figure out how to do huge distances
+x	Get text drawing
+x	Stop all the memory thrash of text
+x	Think about camera for ship travel stuff
+x	Figure out a way to do UI
+x		Get basic Piloting UI working
+x	Think about relative velocities (everything sol relative)
+x		Maybe have outer stuff fixed in place for now? (no orbital mechanics)
+x	planets		Textured spheres good enough?
+x	planets		20ish gas giant textures

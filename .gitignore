@@ -7,6 +7,10 @@
 *.obj
 *.elf
 
+# Microsoft stuff
+*.ncb
+*.suo
+
 # Linker output
 *.ilk
 *.map
@@ -35,6 +39,7 @@
 *.i*86
 *.x86_64
 *.hex
+*.xbe
 
 # Debug files
 *.dSYM/
