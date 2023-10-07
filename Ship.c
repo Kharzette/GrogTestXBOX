@@ -5,6 +5,7 @@
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 #include	"GrogLibsXBOX/UtilityLib/Physics.h"
 
+#define	SECTOR_BOUNDARY	32768.0f
 #define	SOLAR_WIND_DRAG	0.00001f
 #define	INERTIA_TENSOR	69	//this doesn't do anything yet
 
@@ -16,7 +17,7 @@ typedef struct	Ship_t
 
 	Physics		*mpPhysics;
 
-	//big position
+	//big position, little stored in physics
 	int	mSectorX, mSectorY, mSectorZ;
 
 	//orientation
@@ -53,6 +54,9 @@ Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust, INT64 fuelMax, int o2Max,
 	pRet->mMatColour.x	=pRet->mMatColour.y
 		=pRet->mMatColour.z	=pRet->mMatColour.w	=1.0f;
 
+	//temp put near a world
+	pRet->mSectorZ	=99500;
+
 	pRet->mpMesh	=pMesh;
 
 	pRet->mFuel		=pRet->mFuelMax		=fuelMax;
@@ -87,6 +91,10 @@ static int	Ship_GetHeading(const Ship *pShip)
 	//dots... more dots
 	dot		=D3DXVec3Dot(&forward, &zax);
 	dot2	=D3DXVec3Dot(&xax, &forward);
+
+	//clamp to valid acos values
+	//can get a nan if it is outside a little
+	dot	=Clamp(dot, -1.0f, 1.0f);
 
 	heading	=(float)acos((float)dot);
 
@@ -131,6 +139,10 @@ static int	Ship_GetVelocityHeading(const Ship *pShip)
 	dot		=D3DXVec3Dot(&vel, &zax);
 	dot2	=D3DXVec3Dot(&xax, &vel);
 
+	//clamp to valid acos values
+	//can get a nan if it is outside a little
+	dot	=Clamp(dot, -1.0f, 1.0f);
+	
 	heading	=(float)acos((float)dot);
 
 	//this determines the quadrant
@@ -165,11 +177,74 @@ const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip)
 	return	&pShip->mRot;
 }
 
+void	Ship_GetPosition(const Ship *pShip, const D3DXVECTOR3 *pPos)
+{
+	Physics_GetPosition(pShip->mpPhysics, pPos);
+}
+
+void	Ship_GetSector(const Ship *pShip, int *pX, int *pY, int *pZ)
+{
+	*pX	=pShip->mSectorX;
+	*pY	=pShip->mSectorY;
+	*pZ	=pShip->mSectorZ;
+}
+
 
 //deltaTime in seconds
 void	Ship_Update(Ship *pShip, float dt)
 {
+	D3DXVECTOR3	deltaPos;
+	BOOL		bAdjusted	=FALSE;
+
+
 	Physics_Update(pShip->mpPhysics, dt);
+
+	//check for sector changes
+	Physics_GetPosition(pShip->mpPhysics, &deltaPos);
+
+	while(deltaPos.x > SECTOR_BOUNDARY)
+	{
+		pShip->mSectorX++;
+		deltaPos.x	-=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+	while(deltaPos.x < -SECTOR_BOUNDARY)
+	{
+		pShip->mSectorX--;
+		deltaPos.x	+=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+
+	while(deltaPos.y > SECTOR_BOUNDARY)
+	{
+		pShip->mSectorY++;
+		deltaPos.y	-=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+	while(deltaPos.y < -SECTOR_BOUNDARY)
+	{
+		pShip->mSectorY--;
+		deltaPos.y	+=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+
+	while(deltaPos.z > SECTOR_BOUNDARY)
+	{
+		pShip->mSectorZ++;
+		deltaPos.z	-=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+	while(deltaPos.z < -SECTOR_BOUNDARY)
+	{
+		pShip->mSectorZ--;
+		deltaPos.z	+=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+
+	if(bAdjusted)
+	{
+		Physics_SetPosition(pShip->mpPhysics, &deltaPos);
+	}
 
 	pShip->mTotalDT	+=dt;
 }
@@ -234,7 +309,7 @@ void	Ship_Turn(Ship *pShip, float deltaPitch, float deltaYaw, float deltaRoll)
 	RotateVec(&pShip->mRot, &side, &side);
 
 	D3DXQuaternionRotationAxis(&rotX, &side, deltaPitch);
-	D3DXQuaternionRotationAxis(&rotY, &up, -deltaYaw);		//NOTE NEGATION!
+	D3DXQuaternionRotationAxis(&rotY, &up, -deltaYaw);	//NOTE THE -!
 
 	D3DXQuaternionMultiply(&accum, &rotX, &rotY);
 	D3DXQuaternionMultiply(&pShip->mRot, &pShip->mRot, &accum);
@@ -268,10 +343,23 @@ void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 			const D3DXMATRIX *pProj)
 {
 	D3DXMATRIX	wvp, wtrans, w;
+	D3DXVECTOR3	pos;
+
+	//get position within sector
+	Physics_GetPosition(pShip->mpPhysics, &pos);
+
+	//borrow the transpose temp mat for translation
+	D3DXMatrixTranslation(&wtrans, pos.x, pos.y, pos.z);
 
 	D3DXMatrixRotationQuaternion(&w, &pShip->mRot);
 
-	D3DXMatrixMultiply(&wvp, &w, pView);
+	//rotate * translate
+	D3DXMatrixMultiply(&wvp, &w, &wtrans);
+
+	//world * view
+	D3DXMatrixMultiply(&wvp, &wvp, pView);
+
+	//wv * proj
 	D3DXMatrixMultiply(&wvp, &wvp, pProj);
 
 	D3DXMatrixTranspose(&wtrans, &w);

@@ -56,19 +56,30 @@ Stars	*Stars_Generate(GraphicsDevice *pGD)
 
 
 void	Stars_Draw(const Stars *pStars, GraphicsDevice *pGD,
-			const D3DXMATRIX *pView, const D3DXMATRIX *pProj)
+			const D3DXQUATERNION *pView, const D3DXMATRIX *pProj)
 {
-	D3DXVECTOR4	starColour	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXMATRIX	viewT, projT;
+	D3DXVECTOR4		starColour	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXMATRIX		viewProj;
+	D3DXQUATERNION	viewCam;
 
-	D3DXMatrixTranspose(&viewT, pView);
-	D3DXMatrixTranspose(&projT, pProj);
+	D3DXQuaternionInverse(&viewCam, pView);
+
+	//get a rotation matrix
+	D3DXMatrixRotationQuaternion(&viewProj, &viewCam);
+
+	//mul by projection
+	D3DXMatrixMultiply(&viewProj, &viewProj, pProj);
+
+	//transpose
+	D3DXMatrixTranspose(&viewProj, &viewProj);
+
+	GD_SetRenderState(pGD, D3DRS_ZENABLE, FALSE);
+	GD_SetRenderState(pGD, D3DRS_ZWRITEENABLE, FALSE);
 
 	GD_SetVertexShader(pGD, pStars->mVSHandle);
 	GD_SetPixelShader(pGD, pStars->mPSHandle);
 	
-	GD_SetVShaderConstant(pGD, 0, &viewT, 4);
-	GD_SetVShaderConstant(pGD, 4, &projT, 4);
+	GD_SetVShaderConstant(pGD, 0, &viewProj, 4);
 
 	//set star colour
 	GD_SetPShaderConstant(pGD, 0, &starColour, 1);		//star color
@@ -76,4 +87,7 @@ void	Stars_Draw(const Stars *pStars, GraphicsDevice *pGD,
 	GD_SetStreamSource(pGD, 0, pStars->mpVerts, pStars->mVertSize);
 	GD_SetIndices(pGD, NULL, 0);
 	GD_DrawVertices(pGD, D3DPT_POINTLIST, 0, NUM_STARS);
+
+	GD_SetRenderState(pGD, D3DRS_ZENABLE, TRUE);
+	GD_SetRenderState(pGD, D3DRS_ZWRITEENABLE, TRUE);
 }

@@ -19,6 +19,8 @@ void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 			const D3DXMATRIX *pView,
 			const D3DXMATRIX *pProj);
 
+void	Ship_GetPosition(const Ship *pShip, const D3DXVECTOR3 *pPos);
+void	Ship_GetSector(const Ship *pShip, int *pX, int *pY, int *pZ);
 float	Ship_GetHeading(const Ship *pShip);
 float	Ship_GetNadir(const Ship *pShip);
 

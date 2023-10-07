@@ -266,10 +266,10 @@
 	</References>
 	<Files>
 		<File
-			RelativePath=".\BigAssPrim.c">
+			RelativePath=".\BigKeeper.c">
 		</File>
 		<File
-			RelativePath=".\BigAssPrim.h">
+			RelativePath=".\BigKeeper.h">
 		</File>
 		<File
 			RelativePath=".\DroneCam.c">

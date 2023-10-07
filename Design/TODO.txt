@@ -9,7 +9,11 @@ x		Get basic Piloting UI working
 		Velocity relative to nearest point of interest?
 		Maybe have outer stuff fixed in place for now?
 	Sun/planets/roids
-		Textured spheres good enough?
+x		Textured spheres good enough?
+x		20ish gas giant textures
+		20ish rocky planet textures
+		10ish asteroid textures
+		10ish moon textures
 	Make some other ships
 		Slow, old, beat up starter shuttle
 		Freighters
@@ -22,6 +26,7 @@ x		Get basic Piloting UI working
 		Multiring stations
 		Asteroid orbitals
 		Military stations	
-	Figure out how to do huge distances
+x	Figure out how to do huge distances
 	Physics numbers are big
 		Maybe use fractional tons for mass?
+	Waypoints, cycle through with Y or something?

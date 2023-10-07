@@ -5,67 +5,100 @@
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
 
-#define	TEST_PLANET_DIST	150.0f
+#define	NUM_BIG_THINGS				10
+#define	NUM_PLANET_TEX				21
+#define	SECTOR_SIZE_IN_MEGAMETERS	0.065536f
+#define	AU_TO_MEGAMETERS			149598
+#define	AU_TO_SECTOR				9804.054528f
+#define	ECLIPTIC_SQUISH				0.001f		//bias for randoms to eclip
+#define	METERS_TO_MEGAMETERS		0.000001f
 
 
-typedef struct	BigAssPrim_t
+//Struct to track all the large objects in the solar system
+//These are drawn in megameter scale (1000km per unit).
+typedef struct	BigKeeper_t
 {
-	//material colour
-	D3DXVECTOR4	mMatColour;
+	//cubemaps for texturing
+	IDirect3DCubeTexture8	*mpCubes[NUM_PLANET_TEX];
 
-	//size in megameters
-	float	mScale;
+	//sector coordinates for each big thing
+	//sectors are 0.06 across in megameters
+	//so planets will ungulf lots of sectors
+	int	mSecPosX[NUM_BIG_THINGS];
+	int	mSecPosY[NUM_BIG_THINGS];
+	int	mSecPosZ[NUM_BIG_THINGS];
+
+	//draw within this range
+	int	mDrawRanges[21];
+
+	//sphere for drawing round stuff
+	PrimObject	*mpSphere;
+
+	//handles to the sphere shaders
+	DWORD	mVSHandle, mPSHandle;
+}	BigKeeper;
 
 
 
-}	BigAssPrim;
-
-
-static void	GetRandomPosition(float range, D3DXVECTOR3 *pPos)
+static void	GetRandomPosition(float minRange, float maxRange, D3DXVECTOR3 *pPos)
 {
-	int	halfRMax	=RAND_MAX / 2;
+	float	range		=maxRange - minRange;
+	int		halfRMax	=RAND_MAX / 2;
 
 	int	x	=rand() - halfRMax;
 	int	y	=rand() - halfRMax;
 	int	z	=rand() - halfRMax;
 
-	D3DXVECTOR3	vec	={	x, y, z	};
+	pPos->x	=(float)x;
+	pPos->y	=(float)y;
+	pPos->z	=(float)z;
 
-	D3DXVec3Normalize(&vec, &vec);
-	
-	D3DXVec3Scale(pPos, &vec, range);
+	range	/=RAND_MAX;
+
+	D3DXVec3Scale(pPos, pPos, range);
+
+	pPos->x	+=minRange;
+	pPos->y	+=minRange;
+	pPos->z	+=minRange;
 }
 
 
-BigAssPrim	*BAP_Init(GraphicsDevice *pGD)
+BigKeeper	*BK_Init(GraphicsDevice *pGD)
 {
 	D3DXVECTOR3	zero	={	0.0f, 0.0f, 0.0f	};
-	BigAssPrim	*pRet	=malloc(sizeof(BigAssPrim));
+	BigKeeper	*pRet	=malloc(sizeof(BigKeeper));
 
+	int		i;
 	DWORD	vertDecl[5];
 	char	buf[MAX_PATH];
 
-	memset(pRet, 0, sizeof(BigAssPrim));
+	memset(pRet, 0, sizeof(BigKeeper));
 
-	//default white
-	pRet->mMatColour.x	=pRet->mMatColour.y
-		=pRet->mMatColour.z	=pRet->mMatColour.w	=1.0f;
-
+	for(i=0;i < NUM_PLANET_TEX;i++)
 	{
-		int	i;
-		for(i=0;i < 21;i++)
-		{
-			D3DXVECTOR3	pos;
-			GetRandomPosition(TEST_PLANET_DIST, &pos);
-			D3DXMatrixTranslation(&pRet->mPlanetMats[i], pos.x, pos.y, pos.z);
+		sprintf(buf, "D:\\Media\\Textures\\CubeMaps\\GasGiant%02d.dds", i);
 
-			sprintf(buf, "D:\\Media\\Textures\\CubeMaps\\GasGiant%02d.dds", i);
-
-			GD_CreateCubeTextureFromFile(pGD, &pRet->mpCubes[i], buf);
-		}
+		GD_CreateCubeTextureFromFile(pGD, &pRet->mpCubes[i], buf);
 	}
 
-	pRet->mpPO	=PF_CreateSphere(pGD, zero, 10.0f);
+	//I'm guessing that gas giants are most likely to be
+	//within 1 to 30 AU
+	for(i=0;i < NUM_BIG_THINGS;i++)
+	{
+		D3DXVECTOR3	posAU;
+		GetRandomPosition(1.0f, 30.0f, &posAU);
+
+		//squish position towards the ecliptic
+		posAU.y	*=ECLIPTIC_SQUISH;
+
+		pRet->mSecPosX[i]	=posAU.x * AU_TO_SECTOR;
+		pRet->mSecPosY[i]	=posAU.y * AU_TO_SECTOR;
+		pRet->mSecPosZ[i]	=posAU.z * AU_TO_SECTOR;
+
+		pRet->mDrawRanges[i]	=10000.0f;
+	}
+
+	pRet->mpSphere	=PF_CreateSphere(pGD, zero, 1.0f);
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);
@@ -81,36 +114,70 @@ BigAssPrim	*BAP_Init(GraphicsDevice *pGD)
 }
 
 
-void	BAP_Draw(const BigAssPrim *pBAP, GraphicsDevice *pGD,
-				 const D3DXVECTOR4 *pLightDir,
-				 const D3DXMATRIX *pView, const D3DXMATRIX *pProj)
+void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
+				int secX, int secY, int secZ,
+				const D3DXVECTOR3 *pPlayerPos,
+				const D3DXVECTOR4 *pLightDir,
+				const D3DXMATRIX *pView, const D3DXMATRIX *pProj)
 {
 	int			i;
 	D3DXMATRIX	wvp, wtrans;
+	D3DXVECTOR4	matColour		={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXVECTOR3	playerSector	={	secX, secY, secZ	};
 
-	GD_SetVertexShader(pGD, pBAP->mVSHandle);
-	GD_SetPixelShader(pGD, pBAP->mPSHandle);
+	GD_SetVertexShader(pGD, pBK->mVSHandle);
+	GD_SetPixelShader(pGD, pBK->mPSHandle);
 
-	GD_SetVShaderConstant(pGD, 16, pLightDir, 1);			//light direction
-	GD_SetVShaderConstant(pGD, 17, &pBAP->mMatColour, 1);	//mat color
+	GD_SetVShaderConstant(pGD, 16, pLightDir, 1);	//light direction
+	GD_SetVShaderConstant(pGD, 17, &matColour, 1);	//mat color
 
-	GD_SetStreamSource(pGD, 0, pBAP->mpPO->mpVB, pBAP->mpPO->mStride);
-	GD_SetIndices(pGD, pBAP->mpPO->mpIB, 0);
+	GD_SetStreamSource(pGD, 0, pBK->mpSphere->mpVB, pBK->mpSphere->mStride);
+	GD_SetIndices(pGD, pBK->mpSphere->mpIB, 0);
 
-	for(i=0;i < 21;i++)
+	for(i=0;i < NUM_BIG_THINGS;i++)
 	{
-		GD_SetTexture(pGD, 0, pBAP->mpCubes[i]);
+		//check sector distance
+		D3DXVECTOR3	bigSec	={	pBK->mSecPosX[i], pBK->mSecPosY[i], pBK->mSecPosZ[i]	};
+		D3DXVECTOR3	distVec, playerMM;
+		D3DXMATRIX	world;
 
-		D3DXMatrixMultiply(&wvp, &pBAP->mPlanetMats[i], pView);
+		//this might have alot of inaccuracy out past the oort cloud
+		//but it will be close enough for a rough dist check
+		D3DXVec3Subtract(&distVec, &bigSec, &playerSector);
+
+		if(D3DXVec3Length(&distVec) > pBK->mDrawRanges[i])
+		{
+			//too far
+			continue;
+		}
+
+		//make a world matrix in megameters that is
+		//relative to the player position
+
+		//scale distVec to megameters
+		D3DXVec3Scale(&distVec, &distVec, SECTOR_SIZE_IN_MEGAMETERS);
+
+		//scale playerPos to megameters
+		D3DXVec3Scale(&playerMM, pPlayerPos, METERS_TO_MEGAMETERS);
+
+		//add in player's pos
+		D3DXVec3Add(&distVec, &playerMM, &distVec);
+
+		//eventually the planets will spin but for now just translate
+		D3DXMatrixTranslation(&world, distVec.x, distVec.y, distVec.z);
+
+		GD_SetTexture(pGD, 0, pBK->mpCubes[i]);
+
+		D3DXMatrixMultiply(&wvp, &world, pView);
 		D3DXMatrixMultiply(&wvp, &wvp, pProj);
 
-		D3DXMatrixTranspose(&wtrans, &pBAP->mPlanetMats[i]);
+		D3DXMatrixTranspose(&wtrans, &world);
 		D3DXMatrixTranspose(&wvp, &wvp);
 
 		GD_SetVShaderConstant(pGD, 0, &wvp, 4);		//set WVP
 		GD_SetVShaderConstant(pGD, 8, &wtrans, 4);	//set world
 
 		GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST, 0,
-			pBAP->mpPO->mIndexCount / 3);
+			pBK->mpSphere->mIndexCount / 3);
 	}
 }

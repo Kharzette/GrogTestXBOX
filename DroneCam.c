@@ -34,22 +34,26 @@ static void	RotationQuat(const D3DXVECTOR3 *pPYR, D3DXQUATERNION *pOut)
 }
 
 void	DroneCam_GetCameraMatrix(const DroneCam *pDC,
+			const D3DXVECTOR3 *pShipPos,
 			const D3DXQUATERNION *pAttachedRot,
-			D3DXMATRIX *pMat, D3DXVECTOR3 *pEyePos)
+			D3DXMATRIX *pMat, D3DXVECTOR3 *pEyePos,
+			D3DXQUATERNION *pCenteredView)
 {
 	D3DXVECTOR3		translation	={	0.0f, 0.0f, 1.0f	};
-	D3DXQUATERNION	combined;
 
 	//combine tracking object + view rotation
-	D3DXQuaternionMultiply(&combined, &pDC->mView, pAttachedRot);
+	D3DXQuaternionMultiply(pCenteredView, &pDC->mView, pAttachedRot);
 
 	//get combined forward vector
-	RotateVec(&combined, &translation, &translation);
+	RotateVec(pCenteredView, &translation, &translation);
 
 	//translate along the forward vector to cam distance
 	D3DXVec3Scale(&translation, &translation, pDC->mCurDistance);
 
-	D3DXMatrixAffineTransformation(pMat, 1.0f, NULL, &combined, &translation);
+	//add ship position
+	D3DXVec3Add(&translation, &translation, pShipPos);
+
+	D3DXMatrixAffineTransformation(pMat, 1.0f, NULL, pCenteredView, &translation);
 
 	//invert for camera matrix
 	D3DXMatrixInverse(pMat, NULL, pMat);
@@ -84,8 +88,8 @@ void	DroneCam_Rotate(DroneCam *pDC, float deltaPitch, float deltaYaw, float delt
 	RotateVec(&pDC->mView, &up, &up);
 	RotateVec(&pDC->mView, &side, &side);
 
-	D3DXQuaternionRotationAxis(&rotX, &side, deltaPitch);
-	D3DXQuaternionRotationAxis(&rotY, &up, -deltaYaw);		//NOTE NEGATION!
+	D3DXQuaternionRotationAxis(&rotX, &side, -deltaPitch);	//note negation!
+	D3DXQuaternionRotationAxis(&rotY, &up, deltaYaw);
 
 	D3DXQuaternionMultiply(&accum, &rotX, &rotY);
 	D3DXQuaternionMultiply(&pDC->mView, &pDC->mView, &accum);

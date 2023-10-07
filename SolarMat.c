@@ -15,6 +15,7 @@ typedef struct	SolarMat_t
 	D3DXVECTOR3	mLight2;
 
 	//this will always point to the sun
+	//materials will put spec power in w
 	D3DXVECTOR4	mLightDir;
 
 	D3DMATRIX	mProj;
@@ -24,8 +25,8 @@ typedef struct	SolarMat_t
 
 }	SolarMat;
 
-#define	FARCLIP			1000.0f
-#define	NEARCLIP		0.1f
+#define	FARCLIP			10000.0f
+#define	NEARCLIP		1.0f
 
 //I'm thinking sector sizes around plus or minus 32k
 SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
@@ -71,13 +72,13 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 }
 
 
-const D3DMATRIX	*SolarMat_GetProj(const SolarMat *pSM)
+const D3DXMATRIX	*SolarMat_GetProj(const SolarMat *pSM)
 {
 	return	&pSM->mProj;
 }
 
 
-const D3DVECTOR4	*SolarMat_GetLightDir(const SolarMat *pSM)
+const D3DXVECTOR4	*SolarMat_GetLightDir(const SolarMat *pSM)
 {
 	return	&pSM->mLightDir;
 }

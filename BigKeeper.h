@@ -1,12 +1,14 @@
 #pragma once
 #include	<XTL.h>
 
-typedef struct	BigAssPrim_t		BigAssPrim;
+typedef struct	BigKeeper_t			BigKeeper;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 
 
-BigAssPrim	*BAP_Init(GraphicsDevice *pGD);
+BigKeeper	*BK_Init(GraphicsDevice *pGD);
 
-void	BAP_Draw(const BigAssPrim *pBAP, GraphicsDevice *pGD,
-				 const D3DXVECTOR4 *pLightDir,
-				 const D3DXMATRIX *pView, const D3DXMATRIX *pProj);
+void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
+				int secX, int secY, int secZ,
+				const D3DXVECTOR3 *pPlayerPos,
+				const D3DXVECTOR4 *pLightDir,
+				const D3DXMATRIX *pView, const D3DXMATRIX *pProj);
