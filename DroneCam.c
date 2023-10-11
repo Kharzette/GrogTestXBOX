@@ -3,6 +3,8 @@
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
 
 
+#define	METERS_TO_MEGAMETERS		0.000001f
+
 typedef struct DroneCam_t
 {
 	float	mMinDist, mMaxDist;
@@ -53,6 +55,7 @@ void	DroneCam_GetCameraMatrix(const DroneCam *pDC,
 	//add ship position
 	D3DXVec3Add(&translation, &translation, pShipPos);
 
+	//make meter scale camera
 	D3DXMatrixAffineTransformation(pMat, 1.0f, NULL, pCenteredView, &translation);
 
 	//invert for camera matrix

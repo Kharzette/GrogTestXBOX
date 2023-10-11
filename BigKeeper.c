@@ -7,11 +7,12 @@
 
 #define	NUM_BIG_THINGS				10
 #define	NUM_PLANET_TEX				21
-#define	SECTOR_SIZE_IN_MEGAMETERS	0.065536f
+#define	SECTOR_SIZE_IN_MEGAMETERS	0.032768f
 #define	AU_TO_MEGAMETERS			149598
-#define	AU_TO_SECTOR				9804.054528f
+#define	AU_TO_SECTOR				4565365
 #define	ECLIPTIC_SQUISH				0.001f		//bias for randoms to eclip
 #define	METERS_TO_MEGAMETERS		0.000001f
+#define	MAX_RANGE_AU				450			//maximum solar system size in AU
 
 
 //Struct to track all the large objects in the solar system
@@ -29,7 +30,8 @@ typedef struct	BigKeeper_t
 	int	mSecPosZ[NUM_BIG_THINGS];
 
 	//draw within this range
-	int	mDrawRanges[21];
+	int		mDrawRanges[NUM_BIG_THINGS];
+	float	mScales[NUM_BIG_THINGS];
 
 	//sphere for drawing round stuff
 	PrimObject	*mpSphere;
@@ -38,6 +40,25 @@ typedef struct	BigKeeper_t
 	DWORD	mVSHandle, mPSHandle;
 }	BigKeeper;
 
+
+
+static float	GetRandomRange(float minRange, float maxRange)
+{
+	float	ret, range	=maxRange - minRange;
+	int		halfRMax	=RAND_MAX / 2;
+
+	int	x	=rand() - halfRMax;
+
+	ret	=(float)x;
+
+	range	/=RAND_MAX;
+
+	ret	*=range;
+
+	ret	+=minRange;
+
+	return	ret;
+}
 
 
 static void	GetRandomPosition(float minRange, float maxRange, D3DXVECTOR3 *pPos)
@@ -91,11 +112,14 @@ BigKeeper	*BK_Init(GraphicsDevice *pGD)
 		//squish position towards the ecliptic
 		posAU.y	*=ECLIPTIC_SQUISH;
 
-		pRet->mSecPosX[i]	=posAU.x * AU_TO_SECTOR;
-		pRet->mSecPosY[i]	=posAU.y * AU_TO_SECTOR;
-		pRet->mSecPosZ[i]	=posAU.z * AU_TO_SECTOR;
+		pRet->mSecPosX[i]	=(int)(posAU.x * AU_TO_SECTOR);
+		pRet->mSecPosY[i]	=(int)(posAU.y * AU_TO_SECTOR);
+		pRet->mSecPosZ[i]	=(int)(posAU.z * AU_TO_SECTOR);
 
-		pRet->mDrawRanges[i]	=10000.0f;
+		//gas giants should be 50 - 143 megameter radius
+		pRet->mScales[i]		=GetRandomRange(50.0f, 143.0f);
+
+		pRet->mDrawRanges[i]	=4000;
 	}
 
 	pRet->mpSphere	=PF_CreateSphere(pGD, zero, 1.0f);
@@ -114,16 +138,96 @@ BigKeeper	*BK_Init(GraphicsDevice *pGD)
 }
 
 
+D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK, int secX, int secY, int secZ)
+{
+	D3DXVECTOR3		distVec	={	0.0f, 0.0f, 0.0f	};
+	int				i;
+	for(i=0;i < NUM_BIG_THINGS;i++)
+	{
+		D3DXVECTOR3	dVec;
+
+		//check sector distance
+		int	diffX, diffY, diffZ;
+
+		//do this difference in integer
+		diffX	=pBK->mSecPosX[i] - secX;
+		diffY	=pBK->mSecPosY[i] - secY;
+		diffZ	=pBK->mSecPosZ[i] - secZ;
+
+		//the result, if it matters, should be within
+		//good float range maybe
+		dVec.x	=(float)diffX;
+		dVec.y	=(float)diffY;
+		dVec.z	=(float)diffZ;
+
+		if(D3DXVec3Length(&dVec) > pBK->mDrawRanges[i])
+		{
+			//too far
+			continue;
+		}
+		distVec	=dVec;
+		break;
+	}
+	return	distVec;
+}
+
+
+D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, int secX, int secY, int secZ,
+									const D3DXVECTOR3 *pPlayerPos)
+{
+	D3DXVECTOR3		distVec	={	0.0f, 0.0f, 0.0f	};
+	int				i;
+	for(i=0;i < NUM_BIG_THINGS;i++)
+	{
+		D3DXVECTOR3	dVec, playerMM;
+
+		//check sector distance
+		int	diffX, diffY, diffZ;
+
+		//do this difference in integer
+		diffX	=pBK->mSecPosX[i] - secX;
+		diffY	=pBK->mSecPosY[i] - secY;
+		diffZ	=pBK->mSecPosZ[i] - secZ;
+
+		//the result, if it matters, should be within
+		//good float range maybe
+		dVec.x	=(float)diffX;
+		dVec.y	=(float)diffY;
+		dVec.z	=(float)diffZ;
+
+		if(D3DXVec3Length(&dVec) > pBK->mDrawRanges[i])
+		{
+			//too far
+			continue;
+		}
+
+		//scale distVec to megameters
+		D3DXVec3Scale(&dVec, &dVec, SECTOR_SIZE_IN_MEGAMETERS);
+
+		//scale playerPos to megameters
+		D3DXVec3Scale(&playerMM, pPlayerPos, METERS_TO_MEGAMETERS);
+
+		//add in player's pos
+		D3DXVec3Subtract(&dVec, &dVec, &playerMM);
+
+		return	dVec;
+	}
+	return	distVec;
+}
+
+
 void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
 				int secX, int secY, int secZ,
 				const D3DXVECTOR3 *pPlayerPos,
 				const D3DXVECTOR4 *pLightDir,
-				const D3DXMATRIX *pView, const D3DXMATRIX *pProj)
+				const D3DXQUATERNION *pView, const D3DXMATRIX *pProj)
 {
-	int			i;
-	D3DXMATRIX	wvp, wtrans;
-	D3DXVECTOR4	matColour		={	1.0f, 1.0f, 1.0f, 1.0f	};
-	D3DXVECTOR3	playerSector	={	secX, secY, secZ	};
+	int				i;
+	D3DXMATRIX		wvp, wtrans;
+	D3DXVECTOR4		matColour		={	1.0f, 1.0f, 1.0f, 1.0f	};
+	D3DXQUATERNION	viewCam;
+
+	D3DXQuaternionInverse(&viewCam, pView);
 
 	GD_SetVertexShader(pGD, pBK->mVSHandle);
 	GD_SetPixelShader(pGD, pBK->mPSHandle);
@@ -137,13 +241,24 @@ void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
 	for(i=0;i < NUM_BIG_THINGS;i++)
 	{
 		//check sector distance
-		D3DXVECTOR3	bigSec	={	pBK->mSecPosX[i], pBK->mSecPosY[i], pBK->mSecPosZ[i]	};
-		D3DXVECTOR3	distVec, playerMM;
-		D3DXMATRIX	world;
+		D3DXVECTOR3		distVec, playerMM;
+		D3DXMATRIX		world;
+		D3DXMATRIX		viewProj;
 
-		//this might have alot of inaccuracy out past the oort cloud
-		//but it will be close enough for a rough dist check
-		D3DXVec3Subtract(&distVec, &bigSec, &playerSector);
+		{
+			int	diffX, diffY, diffZ;
+
+			//do this difference in integer
+			diffX	=pBK->mSecPosX[i] - secX;
+			diffY	=pBK->mSecPosY[i] - secY;
+			diffZ	=pBK->mSecPosZ[i] - secZ;
+
+			//the result, if it matters, should be within
+			//good float range maybe
+			distVec.x	=(float)diffX;
+			distVec.y	=(float)diffY;
+			distVec.z	=(float)diffZ;
+		}
 
 		if(D3DXVec3Length(&distVec) > pBK->mDrawRanges[i])
 		{
@@ -161,16 +276,22 @@ void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
 		D3DXVec3Scale(&playerMM, pPlayerPos, METERS_TO_MEGAMETERS);
 
 		//add in player's pos
-		D3DXVec3Add(&distVec, &playerMM, &distVec);
+		D3DXVec3Subtract(&distVec, &distVec, &playerMM);
 
 		//eventually the planets will spin but for now just translate
+		//TODO: scaling
 		D3DXMatrixTranslation(&world, distVec.x, distVec.y, distVec.z);
 
 		GD_SetTexture(pGD, 0, pBK->mpCubes[i]);
 
-		D3DXMatrixMultiply(&wvp, &world, pView);
+		//get a rotation matrix
+		D3DXMatrixRotationQuaternion(&viewProj, &viewCam);
+
+		//world * view * proj
+		D3DXMatrixMultiply(&wvp, &world, &viewProj);
 		D3DXMatrixMultiply(&wvp, &wvp, pProj);
 
+		//transposes
 		D3DXMatrixTranspose(&wtrans, &world);
 		D3DXMatrixTranspose(&wvp, &wvp);
 

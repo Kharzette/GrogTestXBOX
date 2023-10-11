@@ -39,7 +39,6 @@ int main(void)
 	DroneCam		*pDroneCam	=DroneCam_Init();
 
 	float		guiTime, aspect	=(float)RESX / (float)RESY;
-	D3DXVECTOR2	shuttleAttitude	={	0.0f, 0.0f	};
 
 	Mesh		*pShuttleMesh;
 	XBC			*pXBC;
@@ -60,17 +59,10 @@ int main(void)
 
 	LPDIRECT3DTEXTURE8		pUITex, pTestTex	=NULL;
 
-	//test objects to nail down camera / coordinates / scaling
-	PrimObject	*pCube0;
-	PrimObject	*pSphere0;
-
 //	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 16.6666f);	//60hz
 
 	GD_Init(&pGD, RESX, RESY, TRUE);
-
-	pCube0		=PF_CreateCube(10.0f, pGD);
-	pSphere0	=PF_CreateSphere(pGD, zeroVec, 10.0f);
 
 //	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\RainbowVomit.png");
 //	GD_CreateTextureFromFile(pGD, &pTestTex, "D:\\Media\\Textures\\Rainbow.png");
@@ -80,8 +72,7 @@ int main(void)
 	pSM				=SolarMat_Init(pGD, aspect);
 	pXBC			=XBC_Init();
 	pStars			=Stars_Generate(pGD);
-//	pBK				=BK_Init(pGD);
-
+	pBK				=BK_Init(pGD);
 
 	//UI stuff
 	GD_CreateTextureFromFile(pGD, &pUITex, "D:\\Media\\Fonts\\Bahnschrift40.png");
@@ -89,9 +80,25 @@ int main(void)
 	pUI		=UI_Init(pGD, UI_ARRAY_SIZE);
 	PUI_Init(pUI, pGD, pUIFont, pUITex);
 
+	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 15, "warglegargle");
+	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 16, "warglegargle");
+	{
+		D3DXVECTOR2	posPos	={	280.0f, 420.0f	};
+		UI_TextSetPosition(pUI, 15, &posPos);
+		posPos.y	-=40.0f;
+		UI_TextSetPosition(pUI, 16, &posPos);
+
+		posPos.x	=posPos.y	=0.6f;
+		UI_TextSetScale(pUI, 15, &posPos);
+		UI_TextSetScale(pUI, 16, &posPos);
+	}
+	UI_ComputeVB(pUI, pGD, 15);
+	UI_ComputeVB(pUI, pGD, 16);
+
 	//wild guesses on these numbers
 	pShuttle	=Ship_Init(pShuttleMesh,
-		4000,		//max thrust
+//		4000,		//max thrust
+		240000,		//temp cheat
 		10000,		//fuel max
 		1000,		//O2 max
 		20000000,	//cargo max in grams
@@ -159,53 +166,50 @@ int main(void)
 		GD_BeginScene(pGD);
 		{
 			int				px, py, pz;
-			D3DXMATRIX		view, *pProj;
+			D3DXMATRIX		view;
 			D3DXVECTOR3		eyePos, shipPos;
 			D3DXQUATERNION	starQuat;
+
+			const D3DXMATRIX	*pProj	=SolarMat_GetProj(pSM);
 
 			Ship_GetSector(pShuttle, &px, &py, &pz);
 			Ship_GetPosition(pShuttle, &shipPos);
 
 			DroneCam_GetCameraMatrix(pDroneCam, &shipPos,
-				Ship_GetRotation(pShuttle), &view, &eyePos, &starQuat);
-
-			pProj	=SolarMat_GetProj(pSM);
+				Ship_GetRotation(pShuttle), &view,
+				&eyePos, &starQuat);
 
 			//draw stars
 			Stars_Draw(pStars, pGD, &starQuat, pProj);
 
+			{
+				D3DXVECTOR3	bkVec	=BK_GetSectorDistanceVec(pBK, px, py, pz);
+				D3DXVECTOR3	bkVec2	=BK_GetSectorDistanceVec2(pBK, px, py, pz, &shipPos);
+
+				char	bkVecText[49];
+
+				sprintf(bkVecText, "%4.2f, %4.2f, %4.2f", bkVec.x, bkVec.y, bkVec.z);
+				UI_TextSetText(pUI, 15, bkVecText);
+
+				sprintf(bkVecText, "%4.2f, %4.2f, %4.2f", bkVec2.x, bkVec2.y, bkVec2.z);
+				UI_TextSetText(pUI, 16, bkVecText);
+
+				UI_ComputeVB(pUI, pGD, 15);
+				UI_ComputeVB(pUI, pGD, 16);
+			}
+
 			//draw bigass planets and such
-//			BK_Draw(pBK, pGD, px, py, pz,
-//				&eyePos,
-//				SolarMat_GetLightDir(pSM),
-//				&view, SolarMat_GetProj(pSM));
+			BK_Draw(pBK, pGD, px, py, pz,
+				&eyePos,
+				SolarMat_GetLightDir(pSM),
+				&starQuat, SolarMat_GetProj(pSM));
 
 			//clear depth from planet stuff
-//			GD_ClearDepthStencilOnly(pGD, clear);
+			GD_ClearDepthStencilOnly(pGD, clear);
 
 			SolarMat_SetShaderVars(pSM, pGD);
 
-			{
-				D3DXMATRIX	w, wvp;
-
-				D3DXMatrixTranslation(&w, cubePos0.x, cubePos0.y, cubePos0.z);
-
-				D3DXMatrixMultiply(&wvp, &w, &view);
-				D3DXMatrixMultiply(&wvp, &wvp, pProj);
-
-				D3DXMatrixTranspose(&wvp, &wvp);
-
-				GD_SetVShaderConstant(pGD, 0, &wvp, 4);
-
-				GD_SetStreamSource(pGD, 0, pCube0->mpVB, pCube0->mStride);
-				GD_SetIndices(pGD, pCube0->mpIB, 0);
-				GD_DrawIndexedPrimitive(pGD, D3DPT_TRIANGLELIST, 0, pCube0->mIndexCount / 3);
-
-			}
-
-
 			Ship_Draw(pShuttle, pGD, &eyePos, &view, SolarMat_GetProj(pSM));
-
 
 			//draw ui stuff
 			UI_Draw(pUI, pGD);
