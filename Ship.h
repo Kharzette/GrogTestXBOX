@@ -1,5 +1,6 @@
 #pragma once
 #include	<XTL.h>
+#include	"Vec3Int32.h"
 
 typedef struct	Ship_t				Ship;
 typedef struct	Mesh_t				Mesh;
@@ -19,9 +20,9 @@ void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 			const D3DXMATRIX *pView,
 			const D3DXMATRIX *pProj);
 
-void	Ship_GetPosition(const Ship *pShip, const D3DXVECTOR3 *pPos);
-void	Ship_GetSector(const Ship *pShip, int *pX, int *pY, int *pZ);
 float	Ship_GetHeading(const Ship *pShip);
 float	Ship_GetNadir(const Ship *pShip);
 
 const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip);
+const Vec3Int32			*Ship_GetSector(const Ship *pShip);
+const D3DXVECTOR3		*Ship_GetPosition(const Ship *pShip);

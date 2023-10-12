@@ -11,6 +11,8 @@
 #include	"DroneCam.h"
 #include	"BigKeeper.h"
 #include	"SolarMat.h"
+#include	"Vec3Int32.h"
+#include	"WayPoints.h"
 #include	"GrogLibsXBOX/UtilityLib/UpdateTimer.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
@@ -26,6 +28,7 @@
 #define	ANALOG_SCALE	0.0001f
 #define	UI_ARRAY_SIZE	20
 #define	UI_UPDATE_TIME	0.5f		//half a second
+#define	NUM_START_WP	32
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -39,6 +42,7 @@ int main(void)
 	DroneCam		*pDroneCam	=DroneCam_Init();
 
 	float		guiTime, aspect	=(float)RESX / (float)RESY;
+	int			curWP;
 
 	Mesh		*pShuttleMesh;
 	XBC			*pXBC;
@@ -48,6 +52,7 @@ int main(void)
 	Ship		*pShuttle;
 	BigKeeper	*pBK;
 	SolarMat	*pSM;
+	WayPoints	*pWPs;
 
 	D3DXVECTOR3	zeroVec		={	0.0f, 0.0f, 0.0f	};
 	D3DXVECTOR3	cubePos0	={	100.0f, 0.0f, 0.0f	};
@@ -73,6 +78,9 @@ int main(void)
 	pXBC			=XBC_Init();
 	pStars			=Stars_Generate(pGD);
 	pBK				=BK_Init(pGD);
+	pWPs			=WayPoints_Init(NUM_START_WP);
+
+	BK_SetWayPoints(pBK, pWPs);
 
 	//UI stuff
 	GD_CreateTextureFromFile(pGD, &pUITex, "D:\\Media\\Fonts\\Bahnschrift40.png");
@@ -83,7 +91,7 @@ int main(void)
 	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 15, "warglegargle");
 	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 16, "warglegargle");
 	{
-		D3DXVECTOR2	posPos	={	280.0f, 420.0f	};
+		D3DXVECTOR2	posPos	={	280.0f, 320.0f	};
 		UI_TextSetPosition(pUI, 15, &posPos);
 		posPos.y	-=40.0f;
 		UI_TextSetPosition(pUI, 16, &posPos);
@@ -98,7 +106,7 @@ int main(void)
 	//wild guesses on these numbers
 	pShuttle	=Ship_Init(pShuttleMesh,
 //		4000,		//max thrust
-		240000,		//temp cheat
+		24000000,	//temp cheat
 		10000,		//fuel max
 		1000,		//O2 max
 		20000000,	//cargo max in grams
@@ -106,6 +114,7 @@ int main(void)
 		10000000);	//mass in grams
 
 	guiTime	=0.0f;
+	curWP	=0;
 	while(bRunning)
 	{
 		//space color
@@ -130,6 +139,19 @@ int main(void)
 			XBC_GetAnalogLeft(pXBC, &leftX, &leftY);
 			XBC_GetAnalogRight(pXBC, &rightX, &rightY);
 			XBC_GetRightTrigger(pXBC, &throttle);
+
+			if(XBC_ButtonTapped(pXBC, XINPUT_GAMEPAD_DPAD_RIGHT))
+			{
+				curWP++;
+
+				curWP	=WayPoints_ValidIndex(pWPs, curWP);
+			}
+			else if(XBC_ButtonTapped(pXBC, XINPUT_GAMEPAD_DPAD_LEFT))
+			{
+				curWP--;
+
+				curWP	=WayPoints_ValidIndex(pWPs, curWP);
+			}
 
 			Ship_Turn(pShuttle, rightY * dt * ANALOG_SCALE,
 				rightX * dt * ANALOG_SCALE, 0.0f);
@@ -156,8 +178,23 @@ int main(void)
 
 		if(guiTime >= UI_UPDATE_TIME)
 		{
+			int		wph, wpn;
+			INT64	wdist;
+			char	wayText[32];
+
 			guiTime	=0.0f;
 			Ship_UpdateUI(pShuttle, pUI, pGD);
+
+			WayPoints_ComputeHeadingToIndex(pWPs, pShuttle, curWP, &wph, &wpn, &wdist);
+
+			sprintf(wayText, "%s %d, %d", WayPoints_GetName(pWPs, curWP), wph, wpn);
+
+			UI_TextSetText(pUI, 7, wayText);
+			UI_ComputeVB(pUI, pGD, 7);
+
+			BK_SectorDistStr(wayText, wdist);
+			UI_TextSetText(pUI, 13, wayText);
+			UI_ComputeVB(pUI, pGD, 13);
 		}
 
 		//clear
@@ -165,17 +202,19 @@ int main(void)
 
 		GD_BeginScene(pGD);
 		{
-			int				px, py, pz;
+			const Vec3Int32		*pSec;
+			const D3DXVECTOR3	*pShipPos;
+
 			D3DXMATRIX		view;
-			D3DXVECTOR3		eyePos, shipPos;
+			D3DXVECTOR3		eyePos;
 			D3DXQUATERNION	starQuat;
 
 			const D3DXMATRIX	*pProj	=SolarMat_GetProj(pSM);
 
-			Ship_GetSector(pShuttle, &px, &py, &pz);
-			Ship_GetPosition(pShuttle, &shipPos);
+			pSec		=Ship_GetSector(pShuttle);
+			pShipPos	=Ship_GetPosition(pShuttle);
 
-			DroneCam_GetCameraMatrix(pDroneCam, &shipPos,
+			DroneCam_GetCameraMatrix(pDroneCam, pShipPos,
 				Ship_GetRotation(pShuttle), &view,
 				&eyePos, &starQuat);
 
@@ -183,8 +222,8 @@ int main(void)
 			Stars_Draw(pStars, pGD, &starQuat, pProj);
 
 			{
-				D3DXVECTOR3	bkVec	=BK_GetSectorDistanceVec(pBK, px, py, pz);
-				D3DXVECTOR3	bkVec2	=BK_GetSectorDistanceVec2(pBK, px, py, pz, &shipPos);
+				D3DXVECTOR3	bkVec	=BK_GetSectorDistanceVec(pBK, pSec);
+				D3DXVECTOR3	bkVec2	=BK_GetSectorDistanceVec2(pBK, pSec, pShipPos);
 
 				char	bkVecText[49];
 
@@ -199,7 +238,7 @@ int main(void)
 			}
 
 			//draw bigass planets and such
-			BK_Draw(pBK, pGD, px, py, pz,
+			BK_Draw(pBK, pGD, pSec,
 				&eyePos,
 				SolarMat_GetLightDir(pSM),
 				&starQuat, SolarMat_GetProj(pSM));

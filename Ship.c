@@ -1,5 +1,6 @@
 #include	<XTL.h>
 #include	"PilotUI.h"
+#include	"Vec3Int32.h"
 #include	"GrogLibsXBOX/MeshLib/Mesh.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
@@ -18,7 +19,7 @@ typedef struct	Ship_t
 	Physics		*mpPhysics;
 
 	//big position, little stored in physics
-	int	mSectorX, mSectorY, mSectorZ;
+	Vec3Int32	mSector;
 
 	//orientation
 	D3DXQUATERNION	mRot;
@@ -55,9 +56,9 @@ Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust, INT64 fuelMax, int o2Max,
 		=pRet->mMatColour.z	=pRet->mMatColour.w	=1.0f;
 
 	//temp put near a world
-	pRet->mSectorX	=48515;
-	pRet->mSectorY	=1312;
-	pRet->mSectorZ	=46565252;
+	pRet->mSector.x	=9478684;
+	pRet->mSector.y	=-61417;
+	pRet->mSector.z	=16008113;
 
 	pRet->mpMesh	=pMesh;
 
@@ -179,73 +180,76 @@ const D3DXQUATERNION	*Ship_GetRotation(const Ship *pShip)
 	return	&pShip->mRot;
 }
 
-void	Ship_GetPosition(const Ship *pShip, const D3DXVECTOR3 *pPos)
+const D3DXVECTOR3 *Ship_GetPosition(const Ship *pShip)
 {
-	Physics_GetPosition(pShip->mpPhysics, pPos);
+	return	Physics_GetPosition(pShip->mpPhysics);
 }
 
-void	Ship_GetSector(const Ship *pShip, int *pX, int *pY, int *pZ)
+const Vec3Int32 *Ship_GetSector(const Ship *pShip)
 {
-	*pX	=pShip->mSectorX;
-	*pY	=pShip->mSectorY;
-	*pZ	=pShip->mSectorZ;
+	return	&pShip->mSector;
 }
 
 
 //deltaTime in seconds
 void	Ship_Update(Ship *pShip, float dt)
 {
-	D3DXVECTOR3	deltaPos;
-	BOOL		bAdjusted	=FALSE;
+	BOOL	bAdjusted	=FALSE;
+
+	const D3DXVECTOR3	*pDeltaPos;
+	D3DXVECTOR3			ddp;
 
 
 	Physics_Update(pShip->mpPhysics, dt);
 
 	//check for sector changes
-	Physics_GetPosition(pShip->mpPhysics, &deltaPos);
+	pDeltaPos	=Physics_GetPosition(pShip->mpPhysics);
 
-	while(deltaPos.x > SECTOR_BOUNDARY)
-	{
-		pShip->mSectorX++;
-		deltaPos.x	-=SECTOR_BOUNDARY;
-		bAdjusted	=TRUE;
-	}
-	while(deltaPos.x < -SECTOR_BOUNDARY)
-	{
-		pShip->mSectorX--;
-		deltaPos.x	+=SECTOR_BOUNDARY;
-		bAdjusted	=TRUE;
-	}
+	//copy
+	ddp	=*pDeltaPos;
 
-	while(deltaPos.y > SECTOR_BOUNDARY)
+	while(ddp.x > SECTOR_BOUNDARY)
 	{
-		pShip->mSectorY++;
-		deltaPos.y	-=SECTOR_BOUNDARY;
+		pShip->mSector.x++;
+		ddp.x		-=SECTOR_BOUNDARY;
 		bAdjusted	=TRUE;
 	}
-	while(deltaPos.y < -SECTOR_BOUNDARY)
+	while(ddp.x < -SECTOR_BOUNDARY)
 	{
-		pShip->mSectorY--;
-		deltaPos.y	+=SECTOR_BOUNDARY;
+		pShip->mSector.x--;
+		ddp.x		+=SECTOR_BOUNDARY;
 		bAdjusted	=TRUE;
 	}
 
-	while(deltaPos.z > SECTOR_BOUNDARY)
+	while(ddp.y > SECTOR_BOUNDARY)
 	{
-		pShip->mSectorZ++;
-		deltaPos.z	-=SECTOR_BOUNDARY;
+		pShip->mSector.y++;
+		ddp.y		-=SECTOR_BOUNDARY;
 		bAdjusted	=TRUE;
 	}
-	while(deltaPos.z < -SECTOR_BOUNDARY)
+	while(ddp.y < -SECTOR_BOUNDARY)
 	{
-		pShip->mSectorZ--;
-		deltaPos.z	+=SECTOR_BOUNDARY;
+		pShip->mSector.y--;
+		ddp.y		+=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+
+	while(ddp.z > SECTOR_BOUNDARY)
+	{
+		pShip->mSector.z++;
+		ddp.z		-=SECTOR_BOUNDARY;
+		bAdjusted	=TRUE;
+	}
+	while(ddp.z < -SECTOR_BOUNDARY)
+	{
+		pShip->mSector.z--;
+		ddp.z		+=SECTOR_BOUNDARY;
 		bAdjusted	=TRUE;
 	}
 
 	if(bAdjusted)
 	{
-		Physics_SetPosition(pShip->mpPhysics, &deltaPos);
+		Physics_SetPosition(pShip->mpPhysics, &ddp);
 	}
 
 	pShip->mTotalDT	+=dt;
@@ -284,7 +288,7 @@ void	Ship_UpdateUI(Ship *pShip, UI *pUI, GraphicsDevice *pGD)
 		pShip->mUIAccel, pShip->mFuel,
 		pShip->mO2, pShip->mCargo, pShip->mCargoMax, pShip->mHull,
 		pShip->mHullMax, 1, 1,
-		heading, nadir, 0, 0,
+		heading, nadir,
 		pShip->mHeat, pShip->mRadiatorsExtendPercent,
 		velHeading, velNadir, brkHeading, brkNadir);
 
@@ -345,13 +349,12 @@ void	Ship_Draw(Ship *pShip, GraphicsDevice *pGD,
 			const D3DXMATRIX *pProj)
 {
 	D3DXMATRIX	wvp, wtrans, w;
-	D3DXVECTOR3	pos;
 
 	//get position within sector
-	Physics_GetPosition(pShip->mpPhysics, &pos);
+	const D3DXVECTOR3	*pPos	=Physics_GetPosition(pShip->mpPhysics);
 
 	//borrow the transpose temp mat for translation
-	D3DXMatrixTranslation(&wtrans, pos.x, pos.y, pos.z);
+	D3DXMatrixTranslation(&wtrans, pPos->x, pPos->y, pPos->z);
 
 	D3DXMatrixRotationQuaternion(&w, &pShip->mRot);
 

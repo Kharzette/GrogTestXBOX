@@ -15,10 +15,13 @@
 #define	RAD_EXTEND_IDX	10
 #define	VEL_DIR_IDX		11	//velocity heading
 #define	BRK_DIR_IDX		12	//braking heading
-#define	IDX_COUNT		13
+#define	WAY_DIST_IDX	13
+#define	IDX_COUNT		14
 
 #define	GRAMS_TO_TONS	1000000
 #define	GRAMS_TO_KILOS	1000
+#define	C_TO_KMS		299792.458
+#define	C_TO_KMS_PCT	2997924.58
 
 
 void	PUI_Init(UI *pUI, GraphicsDevice *pGD, Font *pFont, LPDIRECT3DTEXTURE8 pFTex)
@@ -30,7 +33,8 @@ void	PUI_Init(UI *pUI, GraphicsDevice *pGD, Font *pFont, LPDIRECT3DTEXTURE8 pFTe
 	UI_AddString(pUI, pGD, pFont, pFTex, 20, CARGO_IDX, "Blort");
 	UI_AddString(pUI, pGD, pFont, pFTex, 20, PASSENGER_IDX, "Blort");
 	UI_AddString(pUI, pGD, pFont, pFTex, 20, HEADING_IDX, "Blort");
-	UI_AddString(pUI, pGD, pFont, pFTex, 16, WAY_HEADING_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 32, WAY_HEADING_IDX, "Blort");
+	UI_AddString(pUI, pGD, pFont, pFTex, 32, WAY_DIST_IDX, "Blort");
 	UI_AddString(pUI, pGD, pFont, pFTex, 16, HEAT_IDX, "Blort");
 	UI_AddString(pUI, pGD, pFont, pFTex, 16, HULL_IDX, "Blort");
 	UI_AddString(pUI, pGD, pFont, pFTex, 20, RAD_EXTEND_IDX, "Blort");
@@ -73,9 +77,11 @@ void	PUI_Init(UI *pUI, GraphicsDevice *pGD, Font *pFont, LPDIRECT3DTEXTURE8 pFTe
 		pos.y	-=30;
 		UI_TextSetPosition(pUI, PASSENGER_IDX, &pos);
 
-		pos.x	=290;
+		pos.x	=240;
 		pos.y	=400;
 		UI_TextSetPosition(pUI, WAY_HEADING_IDX, &pos);
+		pos.y	+=15;
+		UI_TextSetPosition(pUI, WAY_DIST_IDX, &pos);
 
 		pos.x	=290;
 		pos.y	=20;
@@ -137,13 +143,17 @@ void	PUI_UpdateValues(UI *pUI, GraphicsDevice *pGD,
 			float v, float accel, INT64 fuel,
 			int o2, INT64 cargo, INT64 cargoMax, int hullHealth,
 			int hullMax, int passengers, int passengerMax, int heading,
-			int nadir, int wayHeading, int wayNadir, float heat,
-			float coolingExtendPercent, int velHeading,
-			int velNadir, int brkHeading, int brkNadir)
+			int nadir, float heat, float coolingExtendPercent,
+			int velHeading, int velNadir, int brkHeading, int brkNadir)
 {
 	char	buf[32];
 
-	if(v >= 1000)
+	if(v > 3000000)
+	{
+		v	/=C_TO_KMS_PCT;
+		sprintf(buf, "%4.2f%% C", v);
+	}
+	else if(v >= 1000)
 	{
 		v	/=1000;
 		sprintf(buf, "%4.2f km/s", v);
@@ -208,14 +218,6 @@ void	PUI_UpdateValues(UI *pUI, GraphicsDevice *pGD,
 
 	sprintf(buf, "PSNGRS: %d/%d", passengers, passengerMax);
 	UI_TextSetText(pUI, PASSENGER_IDX, buf);
-
-	//wrap into  positive
-	if(wayHeading < 0)
-	{
-		wayHeading	+=360;
-	}
-	sprintf(buf, "WAY: %d, %d", wayHeading, -wayNadir);
-	UI_TextSetText(pUI, WAY_HEADING_IDX, buf);
 
 	sprintf(buf, "CORE: %4.2f K", heat);
 	UI_TextSetText(pUI, HEAT_IDX, buf);

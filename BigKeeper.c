@@ -1,5 +1,7 @@
 #include	<XTL.h>
 #include	<stdio.h>
+#include	"Vec3Int32.h"
+#include	"WayPoints.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/UtilityLib/PrimFactory.h"
 #include	"GrogLibsXBOX/UtilityLib/MiscStuff.h"
@@ -8,11 +10,43 @@
 #define	NUM_BIG_THINGS				10
 #define	NUM_PLANET_TEX				21
 #define	SECTOR_SIZE_IN_MEGAMETERS	0.032768f
+#define	SECTOR_SIZE_IN_KM			32.768f
 #define	AU_TO_MEGAMETERS			149598
 #define	AU_TO_SECTOR				4565365
 #define	ECLIPTIC_SQUISH				0.001f		//bias for randoms to eclip
 #define	METERS_TO_MEGAMETERS		0.000001f
 #define	MAX_RANGE_AU				450			//maximum solar system size in AU
+
+void	BK_SectorDistStr(char *szDist, INT64 dist)
+{
+	INT64	MM, m, km;
+	float	AU;
+
+	AU	=(float)dist / AU_TO_SECTOR;
+
+	if(AU > 0.5)
+	{
+		sprintf(szDist, "%4.2f AU", AU);
+		return;
+	}
+
+	MM	=(float)dist * SECTOR_SIZE_IN_MEGAMETERS;
+	if(MM > 10)
+	{
+		sprintf(szDist, "%I64d MM", MM);
+		return;
+	}
+
+	km	=(float)dist * SECTOR_SIZE_IN_KM;
+	if(km > 1)
+	{
+		sprintf(szDist, "%d km", km);
+		return;
+	}
+
+	m	=dist * 32768;
+	sprintf(szDist, "%I64d m", m);
+}
 
 
 //Struct to track all the large objects in the solar system
@@ -25,9 +59,7 @@ typedef struct	BigKeeper_t
 	//sector coordinates for each big thing
 	//sectors are 0.06 across in megameters
 	//so planets will ungulf lots of sectors
-	int	mSecPosX[NUM_BIG_THINGS];
-	int	mSecPosY[NUM_BIG_THINGS];
-	int	mSecPosZ[NUM_BIG_THINGS];
+	Vec3Int32	mSecPos[NUM_BIG_THINGS];
 
 	//draw within this range
 	int		mDrawRanges[NUM_BIG_THINGS];
@@ -83,6 +115,42 @@ static void	GetRandomPosition(float minRange, float maxRange, D3DXVECTOR3 *pPos)
 	pPos->z	+=minRange;
 }
 
+static void	GetRandomName(char *pOutName)
+{
+	int	i;
+
+	//first capital letter
+	i	=rand() % 24;
+	i	+=65;
+
+	*pOutName	=(char)i;
+
+	for(i=1;i < 12;i++)
+	{
+		int	letter	=rand() % 24;
+		letter		+=97;
+
+		pOutName[i]	=letter;
+	}
+}
+
+
+void	BK_SetWayPoints(const BigKeeper *pBK, WayPoints *pWP)
+{
+	char		name[16];
+	int			i;
+	D3DXVECTOR3	zeroVec	={	0.0f, 0.0f, 0.0f	};
+
+	memset(name, 0, 16);
+
+	for(i=0;i < NUM_BIG_THINGS;i++)
+	{
+		GetRandomName(name);
+
+		WayPoints_Add(pWP, name, pBK->mSecPos[i], zeroVec);
+	}
+}
+
 
 BigKeeper	*BK_Init(GraphicsDevice *pGD)
 {
@@ -112,9 +180,9 @@ BigKeeper	*BK_Init(GraphicsDevice *pGD)
 		//squish position towards the ecliptic
 		posAU.y	*=ECLIPTIC_SQUISH;
 
-		pRet->mSecPosX[i]	=(int)(posAU.x * AU_TO_SECTOR);
-		pRet->mSecPosY[i]	=(int)(posAU.y * AU_TO_SECTOR);
-		pRet->mSecPosZ[i]	=(int)(posAU.z * AU_TO_SECTOR);
+		pRet->mSecPos[i].x	=(int)(posAU.x * AU_TO_SECTOR);
+		pRet->mSecPos[i].y	=(int)(posAU.y * AU_TO_SECTOR);
+		pRet->mSecPos[i].z	=(int)(posAU.z * AU_TO_SECTOR);
 
 		//gas giants should be 50 - 143 megameter radius
 		pRet->mScales[i]		=GetRandomRange(50.0f, 143.0f);
@@ -138,33 +206,35 @@ BigKeeper	*BK_Init(GraphicsDevice *pGD)
 }
 
 
-D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK, int secX, int secY, int secZ)
+//not really useful for real game stuff, just a debug thing
+D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK,
+									const Vec3Int32 *pSec)
 {
 	D3DXVECTOR3		distVec	={	0.0f, 0.0f, 0.0f	};
 	int				i;
 	for(i=0;i < NUM_BIG_THINGS;i++)
 	{
+		INT64		dist;
 		D3DXVECTOR3	dVec;
 
 		//check sector distance
-		int	diffX, diffY, diffZ;
+		Vec3Int32	diff;
 
 		//do this difference in integer
-		diffX	=pBK->mSecPosX[i] - secX;
-		diffY	=pBK->mSecPosY[i] - secY;
-		diffZ	=pBK->mSecPosZ[i] - secZ;
+		Vec3Int32_Subtract(&diff, &pBK->mSecPos[i], pSec);
 
-		//the result, if it matters, should be within
-		//good float range maybe
-		dVec.x	=(float)diffX;
-		dVec.y	=(float)diffY;
-		dVec.z	=(float)diffZ;
+		dist	=Vec3Int32_Length(&diff);
 
 		if(D3DXVec3Length(&dVec) > pBK->mDrawRanges[i])
 		{
 			//too far
 			continue;
 		}
+
+		//the result, if it matters, should be within
+		//good float range maybe
+		Vec3Int32_Convert(&dVec, &diff);
+
 		distVec	=dVec;
 		break;
 	}
@@ -172,34 +242,33 @@ D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK, int secX, int secY, in
 }
 
 
-D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, int secX, int secY, int secZ,
+D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, const Vec3Int32 *pSec,
 									const D3DXVECTOR3 *pPlayerPos)
 {
 	D3DXVECTOR3		distVec	={	0.0f, 0.0f, 0.0f	};
 	int				i;
 	for(i=0;i < NUM_BIG_THINGS;i++)
 	{
+		INT64		dist;
 		D3DXVECTOR3	dVec, playerMM;
 
 		//check sector distance
-		int	diffX, diffY, diffZ;
+		Vec3Int32	diff;
 
 		//do this difference in integer
-		diffX	=pBK->mSecPosX[i] - secX;
-		diffY	=pBK->mSecPosY[i] - secY;
-		diffZ	=pBK->mSecPosZ[i] - secZ;
+		Vec3Int32_Subtract(&diff, &pBK->mSecPos[i], pSec);
 
-		//the result, if it matters, should be within
-		//good float range maybe
-		dVec.x	=(float)diffX;
-		dVec.y	=(float)diffY;
-		dVec.z	=(float)diffZ;
+		dist	=Vec3Int32_Length(&diff);
 
-		if(D3DXVec3Length(&dVec) > pBK->mDrawRanges[i])
+		if(dist > pBK->mDrawRanges[i])
 		{
 			//too far
 			continue;
 		}
+
+		//the result, if it matters, should be within
+		//good float range maybe
+		Vec3Int32_Convert(&dVec, &diff);
 
 		//scale distVec to megameters
 		D3DXVec3Scale(&dVec, &dVec, SECTOR_SIZE_IN_MEGAMETERS);
@@ -217,7 +286,7 @@ D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, int secX, int secY, i
 
 
 void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
-				int secX, int secY, int secZ,
+				const Vec3Int32 *pSec,
 				const D3DXVECTOR3 *pPlayerPos,
 				const D3DXVECTOR4 *pLightDir,
 				const D3DXQUATERNION *pView, const D3DXMATRIX *pProj)
@@ -244,27 +313,25 @@ void	BK_Draw(const BigKeeper *pBK, GraphicsDevice *pGD,
 		D3DXVECTOR3		distVec, playerMM;
 		D3DXMATRIX		world;
 		D3DXMATRIX		viewProj;
+		INT64			dist;
 
-		{
-			int	diffX, diffY, diffZ;
+		//check sector distance
+		Vec3Int32	diff;
 
-			//do this difference in integer
-			diffX	=pBK->mSecPosX[i] - secX;
-			diffY	=pBK->mSecPosY[i] - secY;
-			diffZ	=pBK->mSecPosZ[i] - secZ;
+		//do this difference in integer
+		Vec3Int32_Subtract(&diff, &pBK->mSecPos[i], pSec);
 
-			//the result, if it matters, should be within
-			//good float range maybe
-			distVec.x	=(float)diffX;
-			distVec.y	=(float)diffY;
-			distVec.z	=(float)diffZ;
-		}
+		dist	=Vec3Int32_Length(&diff);
 
-		if(D3DXVec3Length(&distVec) > pBK->mDrawRanges[i])
+		if(dist > pBK->mDrawRanges[i])
 		{
 			//too far
 			continue;
 		}
+
+		//the result, if it matters, should be within
+		//good float range maybe
+		Vec3Int32_Convert(&distVec, &diff);
 
 		//make a world matrix in megameters that is
 		//relative to the player position

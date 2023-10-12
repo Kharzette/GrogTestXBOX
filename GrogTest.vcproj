@@ -311,6 +311,18 @@
 			RelativePath=".\UI.h">
 		</File>
 		<File
+			RelativePath=".\Vec3Int32.c">
+		</File>
+		<File
+			RelativePath=".\Vec3Int32.h">
+		</File>
+		<File
+			RelativePath=".\WayPoints.c">
+		</File>
+		<File
+			RelativePath=".\WayPoints.h">
+		</File>
+		<File
 			RelativePath=".\XBController.c">
 		</File>
 		<File

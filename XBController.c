@@ -231,6 +231,31 @@ void	XBC_UpdateInput(XBC *pXBC)
 }
 
 
+BOOL	XBC_ButtonTapped(const XBC *pXBC, WORD btn)
+{
+	DWORD	i;
+
+	for(i=0;i < XGetPortCount();i++)
+	{
+		if(pXBC->mHandles[i])		
+		{
+			WORD	now		=pXBC->mStates->Gamepad.wButtons & btn;
+			WORD	last	=pXBC->mLastStates->Gamepad.wButtons & btn;
+
+			if(now)
+			{
+				continue;	//still hald
+			}
+			if(last)
+			{
+				return	TRUE;
+			}
+		}
+	}
+	return	FALSE;
+}
+
+
 void	XBC_PrintInput(XBC	*pXBC)
 {
 	DWORD	i;

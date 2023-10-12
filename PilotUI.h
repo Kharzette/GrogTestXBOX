@@ -13,6 +13,5 @@ void	PUI_UpdateValues(UI *pUI, GraphicsDevice *pGD,
 			float v, float accel, INT64 fuel,
 			int o2, INT64 cargo, INT64 cargoMax, int hullHealth,
 			int hullMax, int passengers, int passengerMax, int heading,
-			int nadir, int wayHeading, int wayNadir, float heat,
-			float coolingExtendPercent, int velHeading,
-			int velNadir, int brkHeading, int brkNadir);
+			int nadir, float heat, float coolingExtendPercent,
+			int velHeading, int velNadir, int brkHeading, int brkNadir);
