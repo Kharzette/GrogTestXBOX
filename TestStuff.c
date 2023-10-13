@@ -54,14 +54,6 @@ int main(void)
 	SolarMat	*pSM;
 	WayPoints	*pWPs;
 
-	D3DXVECTOR3	zeroVec		={	0.0f, 0.0f, 0.0f	};
-	D3DXVECTOR3	cubePos0	={	100.0f, 0.0f, 0.0f	};
-	D3DXVECTOR3	cubePos1	={	0.0f, 100.0f, 0.0f	};
-	D3DXVECTOR3	cubePos2	={	0.0f, 0.0f, 100.0f	};
-	D3DXVECTOR3	cubePos3	={	-100.0f, 0.0f, 0.0f	};
-	D3DXVECTOR3	cubePos4	={	0.0f, -100.0f, 0.0f	};
-	D3DXVECTOR3	cubePos5	={	0.0f, 0.0f, -100.0f	};
-
 	LPDIRECT3DTEXTURE8		pUITex, pTestTex	=NULL;
 
 //	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
@@ -74,7 +66,7 @@ int main(void)
 
 	//3d appearance stuff
 	pShuttleMesh	=Mesh_Read(pGD, "D:\\Media\\Meshes\\Shuttle.mesh");
-	pSM				=SolarMat_Init(pGD, aspect);
+	pSM				=SolarMat_Init(pGD, aspect, NULL);
 	pXBC			=XBC_Init();
 	pStars			=Stars_Generate(pGD);
 	pBK				=BK_Init(pGD);
@@ -88,30 +80,17 @@ int main(void)
 	pUI		=UI_Init(pGD, UI_ARRAY_SIZE);
 	PUI_Init(pUI, pGD, pUIFont, pUITex);
 
-	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 15, "warglegargle");
-	UI_AddString(pUI, pGD, pUIFont, pUITex, 50, 16, "warglegargle");
-	{
-		D3DXVECTOR2	posPos	={	280.0f, 320.0f	};
-		UI_TextSetPosition(pUI, 15, &posPos);
-		posPos.y	-=40.0f;
-		UI_TextSetPosition(pUI, 16, &posPos);
-
-		posPos.x	=posPos.y	=0.6f;
-		UI_TextSetScale(pUI, 15, &posPos);
-		UI_TextSetScale(pUI, 16, &posPos);
-	}
-	UI_ComputeVB(pUI, pGD, 15);
-	UI_ComputeVB(pUI, pGD, 16);
-
 	//wild guesses on these numbers
 	pShuttle	=Ship_Init(pShuttleMesh,
 //		4000,		//max thrust
-		24000000,	//temp cheat
+//		240000,		//temp cheat
+		1,			//testing thrust units
 		10000,		//fuel max
 		1000,		//O2 max
 		20000000,	//cargo max in grams
 		120,		//hull max
-		10000000);	//mass in grams
+//		10000000);	//mass in grams
+		1000);	//testing thrust units
 
 	guiTime	=0.0f;
 	curWP	=0;
@@ -119,6 +98,7 @@ int main(void)
 	{
 		//space color
 		D3DCOLOR	clear					=D3DCOLOR_XRGB(1, 1, 3);
+//		D3DCOLOR	clear					=D3DCOLOR_XRGB(111, 111, 113);
 		float		dt, renderDT, animTime	=0.0f;
 
 		UpdateTimer_Stamp(pUT);
@@ -192,7 +172,7 @@ int main(void)
 			UI_TextSetText(pUI, 7, wayText);
 			UI_ComputeVB(pUI, pGD, 7);
 
-			BK_SectorDistStr(wayText, wdist);
+			BK_MakeSectorDistStr(wayText, wdist);
 			UI_TextSetText(pUI, 13, wayText);
 			UI_ComputeVB(pUI, pGD, 13);
 		}
@@ -214,28 +194,14 @@ int main(void)
 			pSec		=Ship_GetSector(pShuttle);
 			pShipPos	=Ship_GetPosition(pShuttle);
 
+			SolarMat_ComputeLight(pSM, pSec);
+
 			DroneCam_GetCameraMatrix(pDroneCam, pShipPos,
 				Ship_GetRotation(pShuttle), &view,
 				&eyePos, &starQuat);
 
 			//draw stars
 			Stars_Draw(pStars, pGD, &starQuat, pProj);
-
-			{
-				D3DXVECTOR3	bkVec	=BK_GetSectorDistanceVec(pBK, pSec);
-				D3DXVECTOR3	bkVec2	=BK_GetSectorDistanceVec2(pBK, pSec, pShipPos);
-
-				char	bkVecText[49];
-
-				sprintf(bkVecText, "%4.2f, %4.2f, %4.2f", bkVec.x, bkVec.y, bkVec.z);
-				UI_TextSetText(pUI, 15, bkVecText);
-
-				sprintf(bkVecText, "%4.2f, %4.2f, %4.2f", bkVec2.x, bkVec2.y, bkVec2.z);
-				UI_TextSetText(pUI, 16, bkVecText);
-
-				UI_ComputeVB(pUI, pGD, 15);
-				UI_ComputeVB(pUI, pGD, 16);
-			}
 
 			//draw bigass planets and such
 			BK_Draw(pBK, pGD, pSec,

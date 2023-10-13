@@ -56,8 +56,8 @@ Ship	*Ship_Init(Mesh *pMesh, INT64 maxThrust, INT64 fuelMax, int o2Max,
 		=pRet->mMatColour.z	=pRet->mMatColour.w	=1.0f;
 
 	//temp put near a world
-	pRet->mSector.x	=9478684;
-	pRet->mSector.y	=-61417;
+	pRet->mSector.x	=9478685;
+	pRet->mSector.y	=-61416;
 	pRet->mSector.z	=16008113;
 
 	pRet->mpMesh	=pMesh;

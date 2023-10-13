@@ -19,4 +19,4 @@ void	BK_SetWayPoints(const BigKeeper *pBK, WayPoints *pWP);
 D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK, const Vec3Int32 *pSec);
 D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, const Vec3Int32 *pSec,
 									const D3DXVECTOR3 *pPlayerPos);
-void	BK_SectorDistStr(char *szDist, INT64 dist);
+void	BK_MakeSectorDistStr(char *szDist, INT64 dist);

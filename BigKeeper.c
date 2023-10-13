@@ -17,37 +17,6 @@
 #define	METERS_TO_MEGAMETERS		0.000001f
 #define	MAX_RANGE_AU				450			//maximum solar system size in AU
 
-void	BK_SectorDistStr(char *szDist, INT64 dist)
-{
-	INT64	MM, m, km;
-	float	AU;
-
-	AU	=(float)dist / AU_TO_SECTOR;
-
-	if(AU > 0.5)
-	{
-		sprintf(szDist, "%4.2f AU", AU);
-		return;
-	}
-
-	MM	=(float)dist * SECTOR_SIZE_IN_MEGAMETERS;
-	if(MM > 10)
-	{
-		sprintf(szDist, "%I64d MM", MM);
-		return;
-	}
-
-	km	=(float)dist * SECTOR_SIZE_IN_KM;
-	if(km > 1)
-	{
-		sprintf(szDist, "%d km", km);
-		return;
-	}
-
-	m	=dist * 32768;
-	sprintf(szDist, "%I64d m", m);
-}
-
 
 //Struct to track all the large objects in the solar system
 //These are drawn in megameter scale (1000km per unit).
@@ -73,7 +42,6 @@ typedef struct	BigKeeper_t
 }	BigKeeper;
 
 
-
 static float	GetRandomRange(float minRange, float maxRange)
 {
 	float	ret, range	=maxRange - minRange;
@@ -91,7 +59,6 @@ static float	GetRandomRange(float minRange, float maxRange)
 
 	return	ret;
 }
-
 
 static void	GetRandomPosition(float minRange, float maxRange, D3DXVECTOR3 *pPos)
 {
@@ -131,23 +98,6 @@ static void	GetRandomName(char *pOutName)
 		letter		+=97;
 
 		pOutName[i]	=letter;
-	}
-}
-
-
-void	BK_SetWayPoints(const BigKeeper *pBK, WayPoints *pWP)
-{
-	char		name[16];
-	int			i;
-	D3DXVECTOR3	zeroVec	={	0.0f, 0.0f, 0.0f	};
-
-	memset(name, 0, 16);
-
-	for(i=0;i < NUM_BIG_THINGS;i++)
-	{
-		GetRandomName(name);
-
-		WayPoints_Add(pWP, name, pBK->mSecPos[i], zeroVec);
 	}
 }
 
@@ -206,6 +156,56 @@ BigKeeper	*BK_Init(GraphicsDevice *pGD)
 }
 
 
+void	BK_SetWayPoints(const BigKeeper *pBK, WayPoints *pWP)
+{
+	char		name[16];
+	int			i;
+	D3DXVECTOR3	zeroVec	={	0.0f, 0.0f, 0.0f	};
+
+	memset(name, 0, 16);
+
+	for(i=0;i < NUM_BIG_THINGS;i++)
+	{
+		GetRandomName(name);
+
+		WayPoints_Add(pWP, name, pBK->mSecPos[i], zeroVec);
+	}
+}
+
+
+//for showing distances, needs better length safety
+//distance in meters
+void	BK_MakeSectorDistStr(char *szDist, INT64 dist)
+{
+	INT64	MM, m, km;
+	float	AU;
+
+	AU	=(float)dist / AU_TO_SECTOR;
+
+	if(AU > 0.5)
+	{
+		sprintf(szDist, "%4.2f AU", AU);
+		return;
+	}
+
+	MM	=(float)dist * SECTOR_SIZE_IN_MEGAMETERS;
+	if(MM > 10)
+	{
+		sprintf(szDist, "%I64d MM", MM);
+		return;
+	}
+
+	km	=(float)dist * SECTOR_SIZE_IN_KM;
+	if(km > 1)
+	{
+		sprintf(szDist, "%d km", km);
+		return;
+	}
+
+	m	=dist * 32768;
+	sprintf(szDist, "%I64d m", m);
+}
+
 //not really useful for real game stuff, just a debug thing
 D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK,
 									const Vec3Int32 *pSec)
@@ -240,7 +240,6 @@ D3DXVECTOR3	BK_GetSectorDistanceVec(const BigKeeper *pBK,
 	}
 	return	distVec;
 }
-
 
 D3DXVECTOR3	BK_GetSectorDistanceVec2(const BigKeeper *pBK, const Vec3Int32 *pSec,
 									const D3DXVECTOR3 *pPlayerPos)

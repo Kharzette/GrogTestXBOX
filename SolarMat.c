@@ -1,11 +1,15 @@
 //store all the shader parameters related to the solar system stuff
 #include	<XTL.h>
+#include	"Vec3Int32.h"
 #include	"GrogLibsXBOX/UtilityLib/GraphicsDevice.h"
 #include	"GrogLibsXBOX/MaterialLib/StuffKeeper.h"
 
 
 typedef struct	SolarMat_t
 {
+	Vec3Int32	mStarSector;	//sector where the main sun resides
+								//no binaries yet
+
 	D3DXVECTOR4	mSpecColor;
 
 	//these will change with proximity to big
@@ -29,7 +33,8 @@ typedef struct	SolarMat_t
 #define	NEARCLIP		1.0f
 
 //I'm thinking sector sizes around plus or minus 32k
-SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
+SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect,
+							const Vec3Int32 *pStarSector)
 {
 	D3DXVECTOR4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	D3DXVECTOR3	light0		={	1.0f, 1.0f, 1.0f	};
@@ -42,6 +47,12 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 	SolarMat	*pRet	=malloc(sizeof(SolarMat));
 
 	memset(pRet, 0, sizeof(SolarMat));
+
+	//if null assume 0 0 0
+	if(pStarSector != NULL)
+	{
+		pRet->mStarSector	=*pStarSector;		
+	}
 
 	D3DXMatrixPerspectiveFovRH(&pRet->mProj, D3DX_PI / 4.0f, aspect, NEARCLIP, FARCLIP);
 
@@ -56,7 +67,7 @@ SolarMat	*SolarMat_Init(GraphicsDevice *pGD, float aspect)
 	pRet->mLightDir.x	=lightDir.x;
 	pRet->mLightDir.y	=lightDir.y;
 	pRet->mLightDir.z	=lightDir.z;
-	pRet->mLightDir.x	=5;	//specular power?
+	pRet->mLightDir.w	=5;	//specular power?
 
 	//vertex declaration, sorta like input layouts on 11
 	vertDecl[0]	=D3DVSD_STREAM(0);
@@ -83,6 +94,26 @@ const D3DXVECTOR4	*SolarMat_GetLightDir(const SolarMat *pSM)
 	return	&pSM->mLightDir;
 }
 
+
+void	SolarMat_ComputeLight(SolarMat *pSM, const Vec3Int32 *pCurSector)
+{
+	//TODO: set trilight fill lights based on prox
+	//to nearby planets if on the sunny side
+	Vec3Int32	delta;
+	D3DXVECTOR3	vec;
+
+	//this will be a largeish number
+	//hopefully the fpu can handle it
+	Vec3Int32_Subtract(&delta, pCurSector, &pSM->mStarSector);
+
+	Vec3Int32_Convert(&vec, &delta);
+
+	D3DXVec3Normalize(&vec, &vec);
+
+	pSM->mLightDir.x	=vec.x;
+	pSM->mLightDir.y	=vec.y;
+	pSM->mLightDir.z	=vec.z;
+}
 
 void	SolarMat_SetShaderVars(const SolarMat *pSM, GraphicsDevice *pGD)
 {

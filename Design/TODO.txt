@@ -1,4 +1,19 @@
-	Waypoints, cycle through with Y or something?
+	Fix odd planet normals (maybe ship is backwards?)
+	Draw a sun (maybe on yet another scale / proj matrix?)
+	Need a time compression or sleep type system
+	Heat generation with engine thrust
+	Extend radiator functionality
+	Power consumption
+		Engines consume power to generate thrust
+		Power units?	kWh / MWh
+		Thrust units?  kN (kilonewtons)
+		So engines would have a power to thrust ratio
+		A perfect solidane generator should use 3.6 grams per watt per second
+	Fuel usage
+		Everything is electric so fuel generates electricity?
+		Thinking the starting fuel should be some kind of future hydrocarbon
+		Then later can get nuclear reactors for less fuel mass
+	Portraits for communication
 	Load all shaders and just switch with an offset
 	Fix goofy resolution / aspect
 	Rumble with engine throttle
@@ -17,11 +32,23 @@
 	Make some installations / orbitals
 		Multiring stations
 		Asteroid orbitals
-		Military stations	
-	Physics numbers are big
-		Maybe use fractional tons for mass?
+		Military stations
+	Audio?
+	Regional market stuff / Stonks
+	Gas giant moons
+	Rockies
+	Ice giants
+	Currencies
+		Physical
+		Crypto
+	Think about ship "sections" like engine area, living area, cargo
+		Orient toward G
+	G limitations for cargo types
 
 Done
+x	Physics numbers are big
+x		Maybe use fractional tons for mass?
+x	Waypoints, cycle through with dpad leftright
 x	Figure out how to do huge distances
 x	Get text drawing
 x	Stop all the memory thrash of text
